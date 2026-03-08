@@ -1,0 +1,70 @@
+# Ghost API Configuration
+# Default configuration for ghost-api
+
+[engine]
+default_strategy = "health_first"
+retry_count = 3
+request_timeout_secs = 30
+
+# Health engine settings
+[engine.health]
+healthy_threshold = 0.7
+degraded_threshold = 0.5
+max_latency_ms = 2000
+consecutive_failure_threshold = 5
+circuit_breaker_timeout_secs = 60
+check_interval_secs = 30
+
+# Scraper configurations
+[scrapers.ts_agent]
+enabled = true
+capabilities = ["x_read", "threads_search"]
+health_threshold = 0.7
+max_concurrent = 5
+
+[scrapers.py_stealth]
+enabled = true
+capabilities = ["x_read", "x_search", "threads_read"]
+health_threshold = 0.6
+max_concurrent = 3
+
+[scrapers.official]
+enabled = true
+api_key = "${OFFICIAL_X_KEY}"
+priority = 99  # Only used if everything else fails
+
+# Platform Shield Configuration
+[shield.x]
+fingerprint = "chrome_120"
+header_profile = "desktop_windows"
+jitter_range_ms = [500, 3000]
+respect_retry_after = true
+
+[shield.threads]
+fingerprint = "chrome_120"
+header_profile = "desktop_macos"
+jitter_range_ms = [800, 4000]
+respect_retry_after = true
+
+# Autoscaling Configuration
+[autoscaling]
+enabled = false
+min_workers = 2
+max_workers = 20
+prefer_spot = true
+spot_fallback_on_demand = true
+
+[autoscaling.scale_up_threshold]
+queue_depth = 50
+duration_secs = 30
+
+[autoscaling.scale_down_threshold]
+utilization = 0.3
+duration_secs = 300
+
+# Vault Configuration (optional)
+[vault]
+provider = "memory"
+cache_ttl_secs = 300
+cache_encrypted = true
+audit_enabled = true

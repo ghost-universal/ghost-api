@@ -1,0 +1,30 @@
+[package]
+name = "ghost-bridge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Polyglot FFI bridges for ghost-api (PyO3, NAPI, gRPC)"
+
+[dependencies]
+ghost-schema = { path = "../ghost-schema" }
+ghost-core = { path = "../ghost-core" }
+
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+# Optional FFI bridges
+pyo3 = { workspace = true, optional = true }
+napi = { workspace = true, optional = true }
+napi-derive = { workspace = true, optional = true }
+
+[features]
+default = []
+pyo3 = ["dep:pyo3"]
+napi = ["dep:napi", "dep:napi-derive"]
+grpc = []

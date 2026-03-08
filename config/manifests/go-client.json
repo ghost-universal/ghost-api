@@ -1,0 +1,15 @@
+{
+  "worker_id": "go-client",
+  "version": "0.1.0",
+  "capabilities": [
+    "X_READ",
+    "X_SEARCH",
+    "THREADS_READ"
+  ],
+  "platforms": ["x", "threads"],
+  "worker_type": "go",
+  "max_concurrent": 10,
+  "health_threshold": 0.75,
+  "priority": 60,
+  "tags": ["browser", "chromedp", "fast"]
+}

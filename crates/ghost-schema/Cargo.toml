@@ -1,0 +1,13 @@
+[package]
+name = "ghost-schema"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Unified Social AST (Abstract Syntax Tree) for ghost-api"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

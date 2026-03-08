@@ -1,0 +1,16 @@
+{
+  "worker_id": "node-agent",
+  "version": "0.1.0",
+  "capabilities": [
+    "X_READ",
+    "X_SEARCH",
+    "THREADS_READ",
+    "THREADS_SEARCH"
+  ],
+  "platforms": ["x", "threads"],
+  "worker_type": "nodejs",
+  "max_concurrent": 5,
+  "health_threshold": 0.7,
+  "priority": 50,
+  "tags": ["browser", "stealth", "puppeteer"]
+}

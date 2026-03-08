@@ -1,0 +1,68 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ghost-core",
+    "crates/ghost-schema",
+    "crates/ghost-bridge",
+    "crates/ghost-vault",
+    "crates/ghost-server",
+    "crates/ghost-adapters/x-adapter",
+    "crates/ghost-adapters/threads-adapter",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.78"
+authors = ["Ghost API Contributors"]
+license = "MIT"
+repository = "https://github.com/your-org/ghost-api"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# HTTP & Web
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+utoipa = "4.2"
+utoipa-swagger-ui = "4.0"
+
+# Tracing & Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Async utilities
+async-trait = "0.1"
+futures = "0.3"
+
+# FFI bridges
+pyo3 = { version = "0.20", features = ["auto-initialize"] }
+napi = { version = "2.14", features = ["async"] }
+napi-derive = "2.14"
+
+# Internal crates
+ghost-core = { path = "crates/ghost-core" }
+ghost-schema = { path = "crates/ghost-schema" }
+ghost-bridge = { path = "crates/ghost-bridge" }
+ghost-vault = { path = "crates/ghost-vault" }
+x-adapter = { path = "crates/ghost-adapters/x-adapter" }
+threads-adapter = { path = "crates/ghost-adapters/threads-adapter" }
+
+[workspace.features]
+default = ["x-adapter", "threads-adapter"]
+ts = ["ghost-bridge/napi"]
+python = ["ghost-bridge/pyo3"]
+go = ["ghost-bridge/grpc"]
+x-adapter = []
+threads-adapter = []
+server = []
