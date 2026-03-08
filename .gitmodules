@@ -1,0 +1,3 @@
+[submodule "scrapers/external/threads-scraper"]
+	path = scrapers/external/threads-scraper
+	url = https://github.com/vdite/threads-scraper.git
