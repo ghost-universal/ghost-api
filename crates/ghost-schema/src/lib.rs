@@ -18,6 +18,7 @@ mod server;
 mod mock;
 mod mapping;
 mod adapter_types;
+mod manifest;
 
 // Re-export core types
 pub use types::*;
@@ -63,6 +64,9 @@ pub use mapping::*;
 
 // Re-export adapter-specific types
 pub use adapter_types::*;
+
+// Re-export manifest types
+pub use manifest::*;
 
 /// Prelude module with commonly used types
 pub mod prelude {

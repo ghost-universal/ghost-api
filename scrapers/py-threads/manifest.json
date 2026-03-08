@@ -1,0 +1,150 @@
+{
+  "$schema": "https://ghost-api.dev/schemas/manifest-v1.json",
+  "id": "py-threads-v2",
+  "name": "Python Threads Scraper",
+  "version": "2.0.0",
+  "description": "Deep BFS traversal of Threads conversations using Playwright with direct cookie injection",
+  
+  "runtime": {
+    "type": "python",
+    "version": ">=3.11",
+    "entrypoint": "py_threads.worker:ThreadsWorker",
+    "module": "py_threads"
+  },
+  
+  "external": {
+    "type": "git_submodule",
+    "path": "scrapers/external/threads-scraper",
+    "upstream": "https://github.com/vdite/threads-scraper",
+    "license": "MIT",
+    "attribution": "vdite/threads-scraper",
+    "files": [
+      "threads_scraper.py",
+      "threads_scraper_v2.py"
+    ]
+  },
+  
+  "capabilities": [
+    {
+      "name": "threads_read",
+      "description": "Read threads and replies from threads.net",
+      "tier": 1,
+      "health_weight": 1.0,
+      "parameters": {
+        "url": {
+          "type": "string",
+          "required": true,
+          "description": "Threads URL to scrape"
+        },
+        "max_pages": {
+          "type": "integer",
+          "default": 100,
+          "description": "Maximum pages to visit during BFS traversal"
+        }
+      }
+    },
+    {
+      "name": "threads_deep_scrape",
+      "description": "BFS traversal of conversation trees with nested replies",
+      "tier": 2,
+      "health_weight": 0.8,
+      "parameters": {
+        "url": {
+          "type": "string",
+          "required": true,
+          "description": "Starting Threads URL"
+        },
+        "max_pages": {
+          "type": "integer",
+          "default": 100,
+          "description": "Maximum pages to visit"
+        },
+        "scroll_stale_rounds": {
+          "type": "integer",
+          "default": 12,
+          "description": "Max scroll rounds without new content before stopping"
+        }
+      }
+    }
+  ],
+  
+  "platforms": ["threads"],
+  
+  "dependencies": {
+    "python": ">=3.11",
+    "playwright": ">=1.40.0",
+    "parsel": ">=1.8.1",
+    "nested-lookup": ">=0.2.25"
+  },
+  
+  "configuration": {
+    "max_pages": {
+      "type": "integer",
+      "default": 100,
+      "description": "Maximum pages to scrape in a single request"
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "default": 30000,
+      "description": "Request timeout in milliseconds"
+    },
+    "scroll_delay_ms": {
+      "type": "integer",
+      "default": 1500,
+      "description": "Delay between scroll operations"
+    },
+    "scroll_stale_rounds": {
+      "type": "integer",
+      "default": 12,
+      "description": "Max scroll rounds without new content"
+    },
+    "headless": {
+      "type": "boolean",
+      "default": true,
+      "description": "Run browser in headless mode"
+    }
+  },
+  
+  "health": {
+    "check_interval_ms": 300000,
+    "healthy_threshold": 0.8,
+    "degraded_threshold": 0.5,
+    "metrics": {
+      "success_weight": 0.60,
+      "latency_weight": 0.25,
+      "quality_weight": 0.15
+    }
+  },
+  
+  "rate_limits": {
+    "requests_per_minute": 10,
+    "backoff_on_429": true,
+    "jitter_range_ms": [500, 3000]
+  },
+  
+  "output": {
+    "format": "json",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "code": {"type": "string"},
+          "text": {"type": "string"},
+          "author": {"type": "string"},
+          "likes": {"type": "integer"},
+          "reply_count": {"type": "integer"}
+        }
+      }
+    }
+  },
+  
+  "ffi": {
+    "entry_points": {
+      "execute": "execute_worker",
+      "info": "get_worker_info",
+      "health": "health_check"
+    }
+  }
+}

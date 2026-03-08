@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "py-threads"
+version = "2.0.0"
+description = "Ghost API Threads Worker - BFS traversal of Threads conversations"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Ghost API Team", email = "team@ghost-api.dev"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["threads", "scraper", "playwright", "ghost-api", "social-media"]
+dependencies = [
+    "playwright>=1.40.0",
+    "parsel>=1.8.1",
+    "nested-lookup>=0.2.25",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+py-threads = "py_threads.worker:_main"
+
+[project.urls]
+Homepage = "https://github.com/ghost-universal/ghost-api"
+Documentation = "https://github.com/ghost-universal/ghost-api/tree/main/scrapers/py-threads"
+Repository = "https://github.com/ghost-universal/ghost-api.git"
+Issues = "https://github.com/ghost-universal/ghost-api/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+py_threads = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
