@@ -1,0 +1,47 @@
+# Files to exclude when packaging crates
+# These files won't be included in published packages
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
+
+# Development files
+.git/
+.gitignore
+.cargo/
+.cargoignore
+.editorconfig
+.pre-commit-config.yaml
+
+# IDE settings
+.idea/
+.vscode/
+*.sublime-*
+
+# Documentation builds
+docs/_build/
+doc/
+
+# Testing
+tests/fixtures/large/
+tests/snapshots/
+
+# Scripts (usually not needed in published crate)
+scripts/
+
+# Examples (keep small examples, exclude large ones)
+examples/large-*/
+
+# Assets (if any)
+assets/*.png
+assets/*.jpg
+assets/*.gif
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak

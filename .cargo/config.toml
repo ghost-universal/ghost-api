@@ -1,0 +1,61 @@
+# =========================
+# Cargo Build Configuration
+# =========================
+# This configuration optimizes build storage and performance.
+# See: https://doc.rust-lang.org/cargo/reference/config.html
+#
+# NOTE: Build profiles (dev, release) are in Cargo.toml, not here.
+# This file configures cargo's behavior, linker settings, and env vars.
+
+# =========================
+# Target-Specific Settings
+# =========================
+
+# Linux-specific optimizations
+[target.x86_64-unknown-linux-gnu]
+linker = "gcc"
+
+# Use mold linker if available (much faster linking)
+# Uncomment if mold is installed:
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[target.x86_64-unknown-linux-musl]
+linker = "gcc"
+
+# macOS-specific settings
+[target.x86_64-apple-darwin]
+linker = "clang"
+
+[target.aarch64-apple-darwin]
+linker = "clang"
+
+# =========================
+# Build Directory Settings
+# =========================
+
+# Use a shared target directory for all workspaces
+# This prevents duplicate dependency builds across projects
+# Uncomment to use a global target directory:
+# [build]
+# target-dir = "~/.cargo/shared-target"
+
+# =========================
+# Environment Variables
+# =========================
+
+[env]
+# Enable incremental compilation (enabled by default)
+CARGO_INCREMENTAL = "1"
+
+# Use more parallel jobs for codegen
+CARGO_BUILD_JOBS = "8"
+
+# =========================
+# Future Improvements
+# =========================
+# For even smaller builds, consider:
+# 1. Use 'cargo bloat' to identify large dependencies
+# 2. Use 'strip' command on final binaries
+# 3. Use 'upx' for binary compression (careful with some platforms)
+# 4. Use 'sccache' for distributed caching: https://github.com/mozilla/sccache
