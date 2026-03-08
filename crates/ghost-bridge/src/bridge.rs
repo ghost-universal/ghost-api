@@ -1,8 +1,12 @@
 //! Bridge abstraction for FFI integration
+//!
+//! Types imported from ghost-schema - the single source of truth.
 
 use std::sync::Arc;
 
-use ghost_schema::{GhostError, PayloadBlob, RawContext};
+use ghost_schema::{
+    GhostError, BridgeType, BridgeStats, BridgeConfig,
+};
 
 /// Bridge for communicating with foreign scrapers
 pub trait Bridge: Send + Sync {
@@ -22,82 +26,10 @@ pub trait Bridge: Send + Sync {
     fn stats(&self) -> BridgeStats;
 }
 
-/// Type of FFI bridge
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BridgeType {
-    /// Python via PyO3
-    PyO3,
-    /// Node.js via NAPI
-    Napi,
-    /// Go via gRPC
-    Grpc,
-    /// Generic Unix Domain Socket
-    Uds,
-    /// In-process (native Rust)
-    Native,
-}
-
-impl BridgeType {
-    /// Returns whether this bridge requires external runtime
-    pub fn requires_runtime(&self) -> bool {
-        // TODO: Implement runtime requirement check
-        matches!(
-            self,
-            BridgeType::PyO3 | BridgeType::Napi | BridgeType::Grpc
-        )
-    }
-
-    /// Returns the runtime name
-    pub fn runtime_name(&self) -> &'static str {
-        // TODO: Implement runtime name
-        match self {
-            BridgeType::PyO3 => "python",
-            BridgeType::Napi => "node",
-            BridgeType::Grpc => "go",
-            BridgeType::Uds => "uds",
-            BridgeType::Native => "native",
-        }
-    }
-}
-
-/// Bridge statistics
-#[derive(Debug, Clone, Default)]
-pub struct BridgeStats {
-    /// Number of active workers
-    pub active_workers: usize,
-    /// Total requests handled
-    pub total_requests: u64,
-    /// Failed requests
-    pub failed_requests: u64,
-    /// Average latency in ms
-    pub avg_latency_ms: u64,
-    /// Memory usage in bytes
-    pub memory_usage: u64,
-    /// Whether the bridge is initialized
-    pub is_initialized: bool,
-}
-
-impl BridgeStats {
-    /// Creates new stats
-    pub fn new() -> Self {
-        // TODO: Implement stats construction
-        Self::default()
-    }
-
-    /// Returns the success rate
-    pub fn success_rate(&self) -> f64 {
-        // TODO: Implement success rate calculation
-        if self.total_requests == 0 {
-            1.0
-        } else {
-            (self.total_requests - self.failed_requests) as f64 / self.total_requests as f64
-        }
-    }
-}
-
 /// Bridge manager for handling multiple bridges
 pub struct BridgeManager {
     bridges: Vec<Arc<dyn Bridge>>,
+    stats: BridgeStats,
 }
 
 impl BridgeManager {
@@ -106,6 +38,7 @@ impl BridgeManager {
         // TODO: Implement bridge manager construction
         Self {
             bridges: Vec::new(),
+            stats: BridgeStats::new(),
         }
     }
 
@@ -118,12 +51,17 @@ impl BridgeManager {
     /// Initializes all bridges
     pub async fn initialize_all(&mut self) -> Result<(), GhostError> {
         // TODO: Implement bridge initialization
+        for bridge in &mut self.bridges.iter_mut() {
+            // Note: Arc doesn't allow mutable access, need to refactor
+        }
+        self.stats.is_initialized = true;
         Ok(())
     }
 
     /// Shuts down all bridges
     pub async fn shutdown_all(&mut self) -> Result<(), GhostError> {
         // TODO: Implement bridge shutdown
+        self.stats.is_initialized = false;
         Ok(())
     }
 
@@ -135,6 +73,21 @@ impl BridgeManager {
             .map(|b| (b.bridge_type(), b.is_healthy()))
             .collect()
     }
+
+    /// Returns the number of bridges
+    pub fn len(&self) -> usize {
+        self.bridges.len()
+    }
+
+    /// Returns whether the manager is empty
+    pub fn is_empty(&self) -> bool {
+        self.bridges.is_empty()
+    }
+
+    /// Returns aggregated stats
+    pub fn stats(&self) -> &BridgeStats {
+        &self.stats
+    }
 }
 
 impl Default for BridgeManager {
@@ -143,38 +96,38 @@ impl Default for BridgeManager {
     }
 }
 
-/// Configuration for bridge creation
-#[derive(Debug, Clone)]
-pub struct BridgeConfig {
-    /// Bridge type
-    pub bridge_type: BridgeType,
-    /// Maximum workers
-    pub max_workers: usize,
-    /// Request timeout in ms
-    pub timeout_ms: u64,
-    /// Memory limit in MB
-    pub memory_limit_mb: u64,
-    /// Path to worker script/binary
-    pub worker_path: Option<String>,
-}
-
-impl BridgeConfig {
-    /// Creates a new bridge config
-    pub fn new(bridge_type: BridgeType) -> Self {
-        // TODO: Implement bridge config construction
-        Self {
-            bridge_type,
-            max_workers: 5,
-            timeout_ms: 30000,
-            memory_limit_mb: 512,
-            worker_path: None,
+/// Creates a new bridge from configuration
+pub fn create_bridge(config: BridgeConfig) -> Result<Box<dyn Bridge>, GhostError> {
+    // TODO: Implement bridge factory
+    match config.bridge_type {
+        BridgeType::PyO3 => {
+            #[cfg(feature = "pyo3")]
+            {
+                Ok(Box::new(crate::python::PythonBridge::new()?))
+            }
+            #[cfg(not(feature = "pyo3"))]
+            {
+                Err(GhostError::ConfigError("Python bridge not enabled".into()))
+            }
         }
-    }
-
-    /// Sets the worker path
-    pub fn with_worker_path(mut self, path: impl Into<String>) -> Self {
-        // TODO: Implement worker path setter
-        self.worker_path = Some(path.into());
-        self
+        BridgeType::Napi => {
+            #[cfg(feature = "napi")]
+            {
+                Ok(Box::new(crate::nodejs::NodeBridge::new()?))
+            }
+            #[cfg(not(feature = "napi"))]
+            {
+                Err(GhostError::ConfigError("NAPI bridge not enabled".into()))
+            }
+        }
+        BridgeType::Grpc => {
+            Err(GhostError::NotImplemented("gRPC bridge not implemented".into()))
+        }
+        BridgeType::Uds => {
+            Err(GhostError::NotImplemented("UDS bridge not implemented".into()))
+        }
+        BridgeType::Native => {
+            Err(GhostError::ConfigError("Native bridge should use direct worker".into()))
+        }
     }
 }

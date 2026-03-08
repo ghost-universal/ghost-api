@@ -1,16 +1,23 @@
 //! Session management and health monitoring
+//!
+//! Types imported from ghost-schema - the single source of truth.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ghost_schema::{GhostError, Platform, SessionData};
-
-use crate::CredentialEntry;
+use ghost_schema::{
+    GhostError, Platform, SessionData, SessionEntry, SessionStatus, SessionHealthResult,
+    CredentialEntry,
+};
 
 /// Session manager for tracking session health
 pub struct SessionManager {
     /// Active sessions
     sessions: HashMap<String, SessionEntry>,
+    /// Sessions indexed by platform
+    by_platform: HashMap<Platform, Vec<String>>,
+    /// Sessions indexed by tenant
+    by_tenant: HashMap<String, Vec<String>>,
     /// Session health checker
     health_checker: SessionHealthChecker,
 }
@@ -21,20 +28,56 @@ impl SessionManager {
         // TODO: Implement session manager construction
         Self {
             sessions: HashMap::new(),
+            by_platform: HashMap::new(),
+            by_tenant: HashMap::new(),
             health_checker: SessionHealthChecker::new(),
         }
     }
 
     /// Registers a session
     pub fn register(&mut self, entry: SessionEntry) {
-        // TODO: Implement session registration
-        self.sessions.insert(entry.id.clone(), entry);
+        // TODO: Implement session registration with indexing
+        let id = entry.id.clone();
+        let platform = entry.platform;
+        let tenant_id = entry.tenant_id.clone();
+
+        // Index by platform
+        self.by_platform
+            .entry(platform)
+            .or_insert_with(Vec::new)
+            .push(id.clone());
+
+        // Index by tenant
+        if let Some(ref tenant) = tenant_id {
+            self.by_tenant
+                .entry(tenant.clone())
+                .or_insert_with(Vec::new)
+                .push(id.clone());
+        }
+
+        self.sessions.insert(id, entry);
     }
 
     /// Unregisters a session
     pub fn unregister(&mut self, session_id: &str) -> Option<SessionEntry> {
-        // TODO: Implement session unregistration
-        self.sessions.remove(session_id)
+        // TODO: Implement session unregistration with index cleanup
+        let session = self.sessions.remove(session_id);
+
+        if let Some(ref s) = session {
+            // Clean up platform index
+            if let Some(ids) = self.by_platform.get_mut(&s.platform) {
+                ids.retain(|id| id != session_id);
+            }
+
+            // Clean up tenant index
+            if let Some(ref tenant_id) = s.tenant_id {
+                if let Some(ids) = self.by_tenant.get_mut(tenant_id) {
+                    ids.retain(|id| id != session_id);
+                }
+            }
+        }
+
+        session
     }
 
     /// Gets a session
@@ -46,9 +89,26 @@ impl SessionManager {
     /// Gets a healthy session for a platform
     pub fn get_healthy(&self, platform: Platform) -> Option<&SessionEntry> {
         // TODO: Implement healthy session retrieval
-        self.sessions
-            .values()
-            .find(|s| s.platform == platform && s.status == SessionStatus::Healthy)
+        self.by_platform
+            .get(&platform)
+            .and_then(|ids| {
+                ids.iter()
+                    .filter_map(|id| self.sessions.get(id))
+                    .find(|s| s.status == SessionStatus::Healthy)
+            })
+    }
+
+    /// Gets sessions for a tenant
+    pub fn get_for_tenant(&self, tenant_id: &str) -> Vec<&SessionEntry> {
+        // TODO: Implement tenant session lookup
+        self.by_tenant
+            .get(tenant_id)
+            .map(|ids| {
+                ids.iter()
+                    .filter_map(|id| self.sessions.get(id))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// Updates session status
@@ -69,7 +129,7 @@ impl SessionManager {
                 SessionStatus::Healthy
             } else {
                 SessionStatus::Unhealthy {
-                    reason: result.reason.clone(),
+                    reason: result.reason.clone().unwrap_or_default(),
                 }
             };
             results.push(result);
@@ -85,101 +145,26 @@ impl SessionManager {
             .filter(|s| std::mem::discriminant(&s.status) == std::mem::discriminant(&status))
             .collect()
     }
+
+    /// Returns all platform IDs
+    pub fn platforms(&self) -> impl Iterator<Item = Platform> + '_ {
+        self.by_platform.keys().copied()
+    }
+
+    /// Returns session count
+    pub fn len(&self) -> usize {
+        self.sessions.len()
+    }
+
+    /// Returns whether the manager is empty
+    pub fn is_empty(&self) -> bool {
+        self.sessions.is_empty()
+    }
 }
 
 impl Default for SessionManager {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// Session entry with health tracking
-#[derive(Debug, Clone)]
-pub struct SessionEntry {
-    /// Session ID
-    pub id: String,
-    /// Platform
-    pub platform: Platform,
-    /// Session data
-    pub session_data: SessionData,
-    /// Current status
-    pub status: SessionStatus,
-    /// Last check timestamp
-    pub last_check: Option<i64>,
-    /// Consecutive failures
-    pub consecutive_failures: u32,
-    /// Rate limit until
-    pub rate_limited_until: Option<i64>,
-}
-
-impl SessionEntry {
-    /// Creates a new session entry
-    pub fn new(platform: Platform, session_data: SessionData) -> Self {
-        // TODO: Implement session entry construction
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            platform,
-            session_data,
-            status: SessionStatus::Unknown,
-            last_check: None,
-            consecutive_failures: 0,
-            rate_limited_until: None,
-        }
-    }
-
-    /// Creates from credential entry
-    pub fn from_credential(cred: &CredentialEntry) -> Self {
-        // TODO: Implement conversion from credential
-        Self::new(cred.platform, cred.session.clone())
-    }
-
-    /// Checks if session is usable
-    pub fn is_usable(&self) -> bool {
-        // TODO: Implement usability check
-        matches!(self.status, SessionStatus::Healthy | SessionStatus::Unknown)
-            && self.rate_limited_until.map_or(true, |until| {
-                chrono::Utc::now().timestamp() > until
-            })
-    }
-
-    /// Marks session as rate limited
-    pub fn mark_rate_limited(&mut self, duration_secs: u64) {
-        // TODO: Implement rate limit marking
-        self.status = SessionStatus::RateLimited;
-        self.rate_limited_until = Some(
-            chrono::Utc::now().timestamp() + duration_secs as i64,
-        );
-    }
-}
-
-/// Session status
-#[derive(Debug, Clone, PartialEq)]
-pub enum SessionStatus {
-    /// Session is healthy
-    Healthy,
-    /// Session is unhealthy
-    Unhealthy {
-        reason: String,
-    },
-    /// Session is rate limited
-    RateLimited,
-    /// Session is suspended
-    Suspended,
-    /// Session status unknown
-    Unknown,
-}
-
-impl SessionStatus {
-    /// Returns the status name
-    pub fn name(&self) -> &'static str {
-        // TODO: Implement name getter
-        match self {
-            SessionStatus::Healthy => "healthy",
-            SessionStatus::Unhealthy { .. } => "unhealthy",
-            SessionStatus::RateLimited => "rate_limited",
-            SessionStatus::Suspended => "suspended",
-            SessionStatus::Unknown => "unknown",
-        }
     }
 }
 
@@ -204,47 +189,12 @@ impl SessionHealthChecker {
     /// Checks session health
     pub async fn check(&self, session: &SessionEntry) -> SessionHealthResult {
         // TODO: Implement health check
-        SessionHealthResult {
-            session_id: session.id.clone(),
-            healthy: true,
-            reason: None,
-            timestamp: chrono::Utc::now().timestamp(),
-        }
+        SessionHealthResult::new(&session.id, true)
     }
 }
 
 impl Default for SessionHealthChecker {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// Result of a session health check
-#[derive(Debug, Clone)]
-pub struct SessionHealthResult {
-    /// Session ID
-    pub session_id: String,
-    /// Whether healthy
-    pub healthy: bool,
-    /// Reason if unhealthy
-    pub reason: Option<String>,
-    /// Check timestamp
-    pub timestamp: i64,
-}
-
-// Stub modules
-mod uuid {
-    pub struct Uuid;
-    impl Uuid {
-        pub fn new_v4() -> Self { Self }
-        pub fn to_string(&self) -> String { "stub-uuid".to_string() }
-    }
-}
-
-mod chrono {
-    pub struct Utc;
-    impl Utc {
-        pub fn now() -> Self { Self }
-        pub fn timestamp(&self) -> i64 { 0 }
     }
 }

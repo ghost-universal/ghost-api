@@ -1,6 +1,12 @@
 //! Platform definitions and platform-specific types
+//!
+//! This module contains platform identifiers and platform-specific
+//! configurations for anti-detection and routing.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+use crate::GhostError;
 
 /// Supported social media platforms
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -85,11 +91,36 @@ impl Platform {
             Platform::Unknown => (100, 500),
         }
     }
+
+    /// Parses a platform from a string
+    pub fn from_str(s: &str) -> Self {
+        // TODO: Implement platform parsing with normalization
+        match s.to_lowercase().as_str() {
+            "x" | "twitter" => Platform::X,
+            "threads" => Platform::Threads,
+            _ => Platform::Unknown,
+        }
+    }
+
+    /// Returns all supported platforms
+    pub fn all() -> Vec<Platform> {
+        // TODO: Implement platform enumeration
+        vec![Platform::X, Platform::Threads]
+    }
 }
 
 impl std::fmt::Display for Platform {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.display_name())
+    }
+}
+
+impl std::str::FromStr for Platform {
+    type Err = GhostError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // TODO: Implement proper platform parsing with error
+        Ok(Self::from_str(s))
     }
 }
 
@@ -107,7 +138,7 @@ pub struct PlatformConfig {
     /// Whether to respect Retry-After headers
     pub respect_retry_after: bool,
     /// Custom headers to include in all requests
-    pub custom_headers: std::collections::HashMap<String, String>,
+    pub custom_headers: HashMap<String, String>,
     /// User agent string
     pub user_agent: Option<String>,
 }
@@ -123,16 +154,16 @@ impl PlatformConfig {
             header_profile: "desktop_windows".to_string(),
             jitter_range_ms: (jitter_min, jitter_max),
             respect_retry_after: true,
-            custom_headers: std::collections::HashMap::new(),
+            custom_headers: HashMap::new(),
             user_agent: None,
         }
     }
 
     /// Validates the configuration
-    pub fn validate(&self) -> Result<(), crate::GhostError> {
+    pub fn validate(&self) -> Result<(), GhostError> {
         // TODO: Implement config validation
         if self.jitter_range_ms.0 > self.jitter_range_ms.1 {
-            return Err(crate::GhostError::ValidationError(
+            return Err(GhostError::ValidationError(
                 "jitter_range_ms min must be <= max".into(),
             ));
         }
@@ -146,10 +177,13 @@ impl PlatformConfig {
     }
 
     /// Generates platform-specific headers for a request
-    pub fn generate_headers(&self) -> std::collections::HashMap<String, String> {
+    pub fn generate_headers(&self) -> HashMap<String, String> {
         // TODO: Implement header generation with platform-specific entropy
         let mut headers = self.custom_headers.clone();
-        headers.insert("User-Agent".to_string(), self.user_agent.clone().unwrap_or_default());
+        headers.insert(
+            "User-Agent".to_string(),
+            self.user_agent.clone().unwrap_or_default(),
+        );
         headers
     }
 }
@@ -189,21 +223,27 @@ impl PlatformShield {
     }
 
     /// Validates the shield configuration
-    pub fn validate(&self) -> Result<(), crate::GhostError> {
+    pub fn validate(&self) -> Result<(), GhostError> {
         // TODO: Implement shield validation
         Ok(())
     }
 
     /// Detects if a response indicates a WAF challenge
-    pub fn detect_challenge(&self, response: &crate::PayloadBlob) -> Option<ChallengeType> {
+    pub fn detect_challenge(&self, _response: &crate::PayloadBlob) -> Option<ChallengeType> {
         // TODO: Implement challenge detection logic
         None
     }
 
     /// Generates countermeasures for detected challenges
-    pub fn generate_countermeasures(&self, challenge: ChallengeType) -> Vec<Countermeasure> {
+    pub fn generate_countermeasures(&self, _challenge: ChallengeType) -> Vec<Countermeasure> {
         // TODO: Implement countermeasure generation
         Vec::new()
+    }
+}
+
+impl Default for PlatformShield {
+    fn default() -> Self {
+        Self::new(Platform::Unknown)
     }
 }
 
@@ -344,12 +384,18 @@ pub enum ChallengeType {
 
 /// Countermeasures for challenges
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Countermeasure {
     PivotToBrowser,
     RotateProxy,
     RotateSession,
-    InjectCookies,
-    SolveChallenge,
-    WaitAndRetry { delay_ms: u64 },
+    InjectCookies {
+        cookies: String,
+    },
+    SolveChallenge {
+        challenge_type: String,
+    },
+    WaitAndRetry {
+        delay_ms: u64,
+    },
 }

@@ -1,16 +1,25 @@
 //! Ghost API Server Library
 //!
 //! Provides the HTTP server with Swagger UI for the Ghost API.
+//!
+//! All types are imported from `ghost-schema` - the single source of truth.
 
 mod routes;
 mod handlers;
 mod error;
-mod config;
 
 pub use routes::*;
 pub use handlers::*;
 pub use error::*;
-pub use config::*;
+
+// Re-export server types from ghost-schema
+pub use ghost_schema::{
+    ServerConfig, HealthResponse,
+    PostQuery, SearchQuery, InjectionHeaders,
+    SearchResponse, TimelineResponse,
+    WorkerInfo, WorkerHealthInfo,
+    ErrorResponse, NotFoundResponse,
+};
 
 use axum::Router;
 use tower_http::cors::{Any, CorsLayer};

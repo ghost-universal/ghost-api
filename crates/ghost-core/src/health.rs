@@ -1,11 +1,17 @@
 //! Health scoring and circuit breaking logic
+//!
+//! This module manages worker health scores and circuit breakers
+//! for resilient request routing.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ghost_schema::{Capability, GhostError, Platform};
+use ghost_schema::{
+    Capability, GhostError, Platform, WorkerHealth, WorkerStats,
+    CircuitBreaker, HealthCheckResult, HealthConfig,
+};
 
-use crate::{HealthConfig, WorkerHealth, WorkerRegistry, WorkerStats};
+use crate::WorkerRegistry;
 
 /// Health engine for managing worker health scores
 pub struct HealthEngine {
@@ -155,9 +161,9 @@ impl HealthEngine {
     }
 
     /// Returns aggregated health status
-    pub fn status(&self) -> crate::HealthStatus {
+    pub fn status(&self) -> ghost_schema::HealthStatus {
         // TODO: Implement status aggregation
-        crate::HealthStatus::new()
+        ghost_schema::HealthStatus::new()
     }
 
     /// Gets the top N healthy workers for a capability
@@ -178,196 +184,5 @@ impl HealthEngine {
     pub async fn get_stats(&self, worker_id: &str) -> Option<WorkerStats> {
         // TODO: Implement stats retrieval
         self.worker_stats.read().await.get(worker_id).cloned()
-    }
-}
-
-/// Circuit breaker for managing failing workers
-#[derive(Debug, Clone)]
-pub struct CircuitBreaker {
-    /// Whether the circuit is open (blocking requests)
-    is_open: bool,
-    /// Time when the circuit was opened
-    opened_at: Option<std::time::Instant>,
-    /// Timeout in seconds before attempting to close
-    timeout_secs: u64,
-    /// Number of successful probes in half-open state
-    successful_probes: u32,
-    /// Number of probes required to close
-    probes_required: u32,
-}
-
-impl CircuitBreaker {
-    /// Creates a new circuit breaker
-    pub fn new(timeout_secs: u64) -> Self {
-        // TODO: Implement circuit breaker construction
-        Self {
-            is_open: false,
-            opened_at: None,
-            timeout_secs,
-            successful_probes: 0,
-            probes_required: 3,
-        }
-    }
-
-    /// Trips the circuit breaker
-    pub fn trip(&mut self) {
-        // TODO: Implement circuit tripping
-        self.is_open = true;
-        self.opened_at = Some(std::time::Instant::now());
-        self.successful_probes = 0;
-    }
-
-    /// Resets the circuit breaker
-    pub fn reset(&mut self) {
-        // TODO: Implement circuit reset
-        self.is_open = false;
-        self.opened_at = None;
-        self.successful_probes = 0;
-    }
-
-    /// Checks if the circuit is open
-    pub fn is_open(&self) -> bool {
-        // TODO: Implement circuit status check with timeout
-        if !self.is_open {
-            return false;
-        }
-
-        // Check if timeout has passed
-        if let Some(opened_at) = self.opened_at {
-            if opened_at.elapsed().as_secs() >= self.timeout_secs {
-                return false; // Half-open state
-            }
-        }
-
-        true
-    }
-
-    /// Checks if in half-open state
-    pub fn is_half_open(&self) -> bool {
-        // TODO: Implement half-open detection
-        if !self.is_open {
-            return false;
-        }
-
-        if let Some(opened_at) = self.opened_at {
-            opened_at.elapsed().as_secs() >= self.timeout_secs
-        } else {
-            false
-        }
-    }
-
-    /// Records a successful probe
-    pub fn record_probe_success(&mut self) {
-        // TODO: Implement probe success recording
-        if self.is_half_open() {
-            self.successful_probes += 1;
-            if self.successful_probes >= self.probes_required {
-                self.reset();
-            }
-        }
-    }
-
-    /// Records a failed probe
-    pub fn record_probe_failure(&mut self) {
-        // TODO: Implement probe failure recording
-        self.trip();
-    }
-}
-
-/// Health check configuration
-#[derive(Debug, Clone)]
-pub struct HealthConfig {
-    /// Threshold for considering a worker healthy (0.0 - 1.0)
-    pub healthy_threshold: f64,
-    /// Threshold for considering a worker degraded (0.0 - 1.0)
-    pub degraded_threshold: f64,
-    /// Maximum latency in ms for normalization
-    pub max_latency_ms: u64,
-    /// Number of consecutive failures before circuit breaker trips
-    pub consecutive_failure_threshold: u32,
-    /// Circuit breaker timeout in seconds
-    pub circuit_breaker_timeout_secs: u64,
-    /// Health check interval in seconds
-    pub check_interval_secs: u64,
-    /// Window size for rolling statistics
-    pub stats_window_size: usize,
-}
-
-impl HealthConfig {
-    /// Creates a new health config with defaults
-    pub fn new() -> Self {
-        // TODO: Implement config construction
-        Self {
-            healthy_threshold: 0.7,
-            degraded_threshold: 0.5,
-            max_latency_ms: 2000,
-            consecutive_failure_threshold: 5,
-            circuit_breaker_timeout_secs: 60,
-            check_interval_secs: 30,
-            stats_window_size: 100,
-        }
-    }
-
-    /// Validates the configuration
-    pub fn validate(&self) -> Result<(), GhostError> {
-        // TODO: Implement config validation
-        if self.healthy_threshold < 0.0 || self.healthy_threshold > 1.0 {
-            return Err(GhostError::ConfigError(
-                "healthy_threshold must be between 0.0 and 1.0".into(),
-            ));
-        }
-        if self.degraded_threshold < 0.0 || self.degraded_threshold > 1.0 {
-            return Err(GhostError::ConfigError(
-                "degraded_threshold must be between 0.0 and 1.0".into(),
-            ));
-        }
-        Ok(())
-    }
-}
-
-impl Default for HealthConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Health check result
-#[derive(Debug, Clone)]
-pub struct HealthCheckResult {
-    /// Worker ID
-    pub worker_id: String,
-    /// Whether the check passed
-    pub passed: bool,
-    /// Latency in ms
-    pub latency_ms: u64,
-    /// Error message if failed
-    pub error: Option<String>,
-    /// Timestamp
-    pub timestamp: std::time::Instant,
-}
-
-impl HealthCheckResult {
-    /// Creates a successful health check result
-    pub fn success(worker_id: impl Into<String>, latency_ms: u64) -> Self {
-        // TODO: Implement success result construction
-        Self {
-            worker_id: worker_id.into(),
-            passed: true,
-            latency_ms,
-            error: None,
-            timestamp: std::time::Instant::now(),
-        }
-    }
-
-    /// Creates a failed health check result
-    pub fn failure(worker_id: impl Into<String>, error: impl Into<String>) -> Self {
-        // TODO: Implement failure result construction
-        Self {
-            worker_id: worker_id.into(),
-            passed: false,
-            latency_ms: 0,
-            error: Some(error.into()),
-            timestamp: std::time::Instant::now(),
-        }
     }
 }

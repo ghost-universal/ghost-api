@@ -1,4 +1,6 @@
 //! Server error types
+//!
+//! Types imported from ghost-schema - the single source of truth.
 
 use axum::{
     http::StatusCode,
@@ -6,76 +8,102 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
-/// Server error types
-#[derive(Debug, Error)]
+use ghost_schema::ErrorResponse;
+
+/// Server error type
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerError {
-    /// Feature not implemented
-    #[error("Not implemented: {0}")]
+    /// Not implemented
     NotImplemented(String),
-
-    /// Invalid request
-    #[error("Invalid request: {0}")]
-    InvalidRequest(String),
-
-    /// Resource not found
-    #[error("Not found: {0}")]
+    /// Not found
     NotFound(String),
-
+    /// Bad request
+    BadRequest(String),
     /// Internal error
-    #[error("Internal error: {0}")]
     Internal(String),
+    /// Unauthorized
+    Unauthorized(String),
+    /// Rate limited
+    RateLimited {
+        retry_after: Option<u64>,
+    },
+}
 
-    /// Ghost core error
-    #[error("Ghost error: {0}")]
-    GhostError(#[from] ghost_schema::GhostError),
+impl ServerError {
+    /// Returns the HTTP status code for this error
+    pub fn status_code(&self) -> StatusCode {
+        // TODO: Implement status code determination
+        match self {
+            ServerError::NotImplemented(_) => StatusCode::NOT_IMPLEMENTED,
+            ServerError::NotFound(_) => StatusCode::NOT_FOUND,
+            ServerError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            ServerError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            ServerError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            ServerError::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
+        }
+    }
+
+    /// Returns the error code
+    pub fn error_code(&self) -> &'static str {
+        // TODO: Implement error code determination
+        match self {
+            ServerError::NotImplemented(_) => "NOT_IMPLEMENTED",
+            ServerError::NotFound(_) => "NOT_FOUND",
+            ServerError::BadRequest(_) => "BAD_REQUEST",
+            ServerError::Internal(_) => "INTERNAL_ERROR",
+            ServerError::Unauthorized(_) => "UNAUTHORIZED",
+            ServerError::RateLimited { .. } => "RATE_LIMITED",
+        }
+    }
+
+    /// Converts to an error response
+    pub fn to_error_response(&self) -> ErrorResponse {
+        // TODO: Implement error response conversion
+        ErrorResponse::new(self.error_code(), self.message())
+    }
+
+    /// Returns the error message
+    pub fn message(&self) -> String {
+        // TODO: Implement message extraction
+        match self {
+            ServerError::NotImplemented(msg) => format!("Not implemented: {}", msg),
+            ServerError::NotFound(msg) => format!("Not found: {}", msg),
+            ServerError::BadRequest(msg) => msg.clone(),
+            ServerError::Internal(msg) => msg.clone(),
+            ServerError::Unauthorized(msg) => msg.clone(),
+            ServerError::RateLimited { .. } => "Rate limit exceeded".to_string(),
+        }
+    }
 }
 
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
-        // TODO: Implement error response generation
-        let (status, message) = match &self {
-            ServerError::NotImplemented(_) => (StatusCode::NOT_IMPLEMENTED, self.to_string()),
-            ServerError::InvalidRequest(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            ServerError::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
-            ServerError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-            ServerError::GhostError(e) => {
-                let status = match e {
-                    ghost_schema::GhostError::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
-                    ghost_schema::GhostError::AuthError(_) => StatusCode::UNAUTHORIZED,
-                    ghost_schema::GhostError::WorkersExhausted(_) => StatusCode::SERVICE_UNAVAILABLE,
-                    _ => StatusCode::INTERNAL_SERVER_ERROR,
-                };
-                (status, self.to_string())
-            }
-        };
-
-        let body = Json(ErrorResponse {
-            error: message,
-            status: status.as_u16(),
-        });
-
+        // TODO: Implement response conversion
+        let status = self.status_code();
+        let body = Json(self.to_error_response());
         (status, body).into_response()
     }
 }
 
-/// Error response body
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ErrorResponse {
-    /// Error message
-    pub error: String,
-    /// HTTP status code
-    pub status: u16,
-}
-
-impl ErrorResponse {
-    /// Creates a new error response
-    pub fn new(error: impl Into<String>, status: u16) -> Self {
-        // TODO: Implement error response construction
-        Self {
-            error: error.into(),
-            status,
+impl From<ghost_schema::GhostError> for ServerError {
+    fn from(err: ghost_schema::GhostError) -> Self {
+        // TODO: Implement GhostError conversion
+        match err {
+            ghost_schema::GhostError::NotImplemented(msg) => ServerError::NotImplemented(msg),
+            ghost_schema::GhostError::WorkersExhausted(msg) => ServerError::NotFound(msg),
+            ghost_schema::GhostError::ValidationError(msg) => ServerError::BadRequest(msg),
+            ghost_schema::GhostError::AuthError(msg) => ServerError::Unauthorized(msg),
+            ghost_schema::GhostError::RateLimited { retry_after, .. } => ServerError::RateLimited { retry_after },
+            _ => ServerError::Internal(err.to_string()),
         }
     }
 }
+
+impl std::fmt::Display for ServerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message())
+    }
+}
+
+impl std::error::Error for ServerError {}

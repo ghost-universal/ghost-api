@@ -1,13 +1,19 @@
 //! Credential management
+//!
+//! Types imported from ghost-schema - the single source of truth.
 
 use std::collections::HashMap;
 
-use ghost_schema::{GhostError, SessionData, SessionType};
+use ghost_schema::{
+    GhostError, Platform, SessionData, CredentialEntry,
+};
 
 /// Credential store for managing session credentials
 pub struct CredentialStore {
     /// Credentials by ID
     credentials: HashMap<String, CredentialEntry>,
+    /// Credentials indexed by tenant and platform
+    by_tenant_platform: HashMap<(String, Platform), Vec<String>>,
     /// Vault reference for secret retrieval
     vault: Option<String>,
 }
@@ -18,14 +24,27 @@ impl CredentialStore {
         // TODO: Implement credential store construction
         Self {
             credentials: HashMap::new(),
+            by_tenant_platform: HashMap::new(),
             vault: None,
         }
     }
 
     /// Adds a credential
-    pub fn add_credential(&mut self, id: impl Into<String>, credential: CredentialEntry) {
-        // TODO: Implement credential addition
-        self.credentials.insert(id.into(), credential);
+    pub fn add_credential(&mut self, credential: CredentialEntry) {
+        // TODO: Implement credential addition with indexing
+        let id = credential.id.clone();
+        let tenant = credential.tenant_id.clone();
+        let platform = credential.platform;
+
+        // Index by tenant and platform
+        if let Some(ref tenant_id) = tenant {
+            self.by_tenant_platform
+                .entry((tenant_id.clone(), platform))
+                .or_insert_with(Vec::new)
+                .push(id.clone());
+        }
+
+        self.credentials.insert(id, credential);
     }
 
     /// Gets a credential by ID
@@ -34,10 +53,33 @@ impl CredentialStore {
         self.credentials.get(id)
     }
 
+    /// Gets credentials for a tenant and platform
+    pub fn get_for_tenant(&self, tenant_id: &str, platform: Platform) -> Vec<&CredentialEntry> {
+        // TODO: Implement tenant-specific credential lookup
+        self.by_tenant_platform
+            .get(&(tenant_id.to_string(), platform))
+            .map(|ids| {
+                ids.iter()
+                    .filter_map(|id| self.credentials.get(id))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// Removes a credential
     pub fn remove(&mut self, id: &str) -> Option<CredentialEntry> {
-        // TODO: Implement credential removal
-        self.credentials.remove(id)
+        // TODO: Implement credential removal with index cleanup
+        let credential = self.credentials.remove(id);
+
+        if let Some(ref cred) = credential {
+            if let Some(ref tenant_id) = cred.tenant_id {
+                if let Some(ids) = self.by_tenant_platform.get_mut(&(tenant_id.clone(), cred.platform)) {
+                    ids.retain(|i| i != id);
+                }
+            }
+        }
+
+        credential
     }
 
     /// Lists all credential IDs
@@ -56,160 +98,28 @@ impl CredentialStore {
         }
         Ok(results)
     }
+
+    /// Marks a credential as invalid
+    pub fn mark_invalid(&mut self, id: &str) {
+        // TODO: Implement invalid marking
+        if let Some(cred) = self.credentials.get_mut(id) {
+            cred.mark_invalid();
+        }
+    }
+
+    /// Returns the count of credentials
+    pub fn len(&self) -> usize {
+        self.credentials.len()
+    }
+
+    /// Returns whether the store is empty
+    pub fn is_empty(&self) -> bool {
+        self.credentials.is_empty()
+    }
 }
 
 impl Default for CredentialStore {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// Credential entry with metadata
-#[derive(Debug, Clone)]
-pub struct CredentialEntry {
-    /// Unique identifier
-    pub id: String,
-    /// Tenant ID
-    pub tenant_id: Option<String>,
-    /// Platform this credential is for
-    pub platform: ghost_schema::Platform,
-    /// Session data
-    pub session: SessionData,
-    /// Creation timestamp
-    pub created_at: i64,
-    /// Last used timestamp
-    pub last_used: Option<i64>,
-    /// Expiration timestamp
-    pub expires_at: Option<i64>,
-    /// Whether credential is valid
-    pub is_valid: bool,
-    /// Tags for categorization
-    pub tags: Vec<String>,
-}
-
-impl CredentialEntry {
-    /// Creates a new credential entry
-    pub fn new(platform: ghost_schema::Platform, session: SessionData) -> Self {
-        // TODO: Implement credential entry construction
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            tenant_id: None,
-            platform,
-            session,
-            created_at: chrono::Utc::now().timestamp(),
-            last_used: None,
-            expires_at: None,
-            is_valid: true,
-            tags: Vec::new(),
-        }
-    }
-
-    /// Creates a cookie-based credential
-    pub fn from_cookies(platform: ghost_schema::Platform, cookies: &str) -> Self {
-        // TODO: Implement cookie credential creation
-        Self::new(platform, SessionData::from_cookies(cookies))
-    }
-
-    /// Creates a bearer token credential
-    pub fn from_bearer(platform: ghost_schema::Platform, token: &str) -> Self {
-        // TODO: Implement bearer credential creation
-        Self::new(platform, SessionData::from_bearer(token))
-    }
-
-    /// Validates the credential
-    pub fn validate(&self) -> Result<(), GhostError> {
-        // TODO: Implement credential validation
-        if !self.is_valid {
-            return Err(GhostError::ValidationError("Credential is marked invalid".into()));
-        }
-
-        if let Some(expires) = self.expires_at {
-            if chrono::Utc::now().timestamp() > expires {
-                return Err(GhostError::SessionExpired("Credential has expired".into()));
-            }
-        }
-
-        self.session.validate()
-    }
-
-    /// Marks the credential as used
-    pub fn mark_used(&mut self) {
-        // TODO: Implement usage marking
-        self.last_used = Some(chrono::Utc::now().timestamp());
-    }
-
-    /// Marks the credential as invalid
-    pub fn mark_invalid(&mut self) {
-        // TODO: Implement invalid marking
-        self.is_valid = false;
-    }
-
-    /// Checks if credential is expired
-    pub fn is_expired(&self) -> bool {
-        // TODO: Implement expiration check
-        if let Some(expires) = self.expires_at {
-            chrono::Utc::now().timestamp() > expires
-        } else {
-            false
-        }
-    }
-}
-
-/// Credential builder
-pub struct CredentialBuilder {
-    entry: CredentialEntry,
-}
-
-impl CredentialBuilder {
-    /// Creates a new builder
-    pub fn new(platform: ghost_schema::Platform, session: SessionData) -> Self {
-        // TODO: Implement builder construction
-        Self {
-            entry: CredentialEntry::new(platform, session),
-        }
-    }
-
-    /// Sets the tenant ID
-    pub fn tenant(mut self, tenant_id: impl Into<String>) -> Self {
-        // TODO: Implement tenant setter
-        self.entry.tenant_id = Some(tenant_id.into());
-        self
-    }
-
-    /// Sets the expiration
-    pub fn expires(mut self, expires_at: i64) -> Self {
-        // TODO: Implement expiration setter
-        self.entry.expires_at = Some(expires_at);
-        self
-    }
-
-    /// Adds a tag
-    pub fn tag(mut self, tag: impl Into<String>) -> Self {
-        // TODO: Implement tag addition
-        self.entry.tags.push(tag.into());
-        self
-    }
-
-    /// Builds the credential entry
-    pub fn build(self) -> CredentialEntry {
-        // TODO: Implement build
-        self.entry
-    }
-}
-
-// Stub modules
-mod uuid {
-    pub struct Uuid;
-    impl Uuid {
-        pub fn new_v4() -> Self { Self }
-        pub fn to_string(&self) -> String { "stub-uuid".to_string() }
-    }
-}
-
-mod chrono {
-    pub struct Utc;
-    impl Utc {
-        pub fn now() -> Self { Self }
-        pub fn timestamp(&self) -> i64 { 0 }
     }
 }

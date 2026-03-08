@@ -1,10 +1,13 @@
 //! Bridge worker implementations
+//!
+//! Types imported from ghost-schema - the single source of truth.
 
 use async_trait::async_trait;
-use ghost_schema::{Capability, CapabilityManifest, GhostError, PayloadBlob, RawContext, Platform};
+use ghost_schema::{
+    Capability, CapabilityManifest, CapabilityTier, GhostError,
+    PayloadBlob, RawContext, Platform, BridgeType,
+};
 use ghost_core::GhostWorker;
-
-use crate::BridgeType;
 
 /// A worker that communicates through a bridge
 pub struct BridgeWorker {
@@ -87,11 +90,9 @@ impl GhostWorker for BridgeWorker {
                 }
             }
             BridgeType::Grpc => {
-                // TODO: Implement gRPC execution
                 Err(GhostError::NotImplemented("gRPC bridge not implemented".into()))
             }
             BridgeType::Uds => {
-                // TODO: Implement UDS execution
                 Err(GhostError::NotImplemented("UDS bridge not implemented".into()))
             }
             BridgeType::Native => {
@@ -134,6 +135,11 @@ impl WorkerFactory {
                 .with_capabilities(capabilities)
                 .with_platforms(platforms),
         )
+    }
+
+    /// Returns the number of workers created
+    pub fn worker_count(&self) -> u32 {
+        self.counter
     }
 }
 

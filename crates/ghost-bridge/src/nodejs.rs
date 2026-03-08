@@ -4,8 +4,8 @@ use ghost_schema::{GhostError, PayloadBlob, RawContext};
 
 /// Executes a Node.js worker
 pub async fn execute_nodejs_worker(
-    worker_id: &str,
-    ctx: &RawContext,
+    _worker_id: &str,
+    _ctx: &RawContext,
 ) -> Result<PayloadBlob, GhostError> {
     // TODO: Implement Node.js worker execution
     // This would use napi-rs to call into Node.js code
@@ -66,6 +66,11 @@ impl NodeBridge {
         self.initialized = false;
         Ok(())
     }
+
+    /// Returns whether the bridge is initialized
+    pub fn is_initialized(&self) -> bool {
+        self.initialized
+    }
 }
 
 impl Default for NodeBridge {
@@ -80,8 +85,6 @@ impl Default for NodeBridge {
 /// NAPI function registration helper
 #[cfg(feature = "napi")]
 pub mod napi_helpers {
-    // use napi_derive::napi;
-
     /// Registers a worker function with NAPI
     pub fn register_worker(_name: &str) -> Result<(), ghost_schema::GhostError> {
         // TODO: Implement NAPI function registration
@@ -91,8 +94,8 @@ pub mod napi_helpers {
     /// Calls a registered worker
     pub async fn call_worker(
         _name: &str,
-        _context: &RawContext,
-    ) -> Result<PayloadBlob, ghost_schema::GhostError> {
+        _context: &ghost_schema::RawContext,
+    ) -> Result<ghost_schema::PayloadBlob, ghost_schema::GhostError> {
         // TODO: Implement NAPI function call
         Err(ghost_schema::GhostError::NotImplemented("NAPI call_worker".into()))
     }

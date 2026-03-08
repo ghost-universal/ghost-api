@@ -1,8 +1,16 @@
 //! Core types for the Ghost AST
+//!
+//! This module contains the fundamental data structures used throughout
+//! the Ghost API ecosystem.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::{Platform, Capability};
+
+// ============================================================================
+// Post Types
+// ============================================================================
 
 /// The unified struct representing a post across all platforms.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,6 +33,10 @@ pub struct GhostPost {
     pub repost_count: Option<u64>,
     /// Number of replies
     pub reply_count: Option<u64>,
+    /// Number of views
+    pub view_count: Option<u64>,
+    /// Number of quotes
+    pub quote_count: Option<u64>,
     /// Post this is replying to (if any)
     pub in_reply_to: Option<String>,
     /// Quoted post (if any)
@@ -47,6 +59,8 @@ impl GhostPost {
             like_count: None,
             repost_count: None,
             reply_count: None,
+            view_count: None,
+            quote_count: None,
             in_reply_to: None,
             quoted_post: None,
             raw_metadata: None,
@@ -66,6 +80,10 @@ impl GhostPost {
     }
 }
 
+// ============================================================================
+// User Types
+// ============================================================================
+
 /// The unified struct representing a user across all platforms.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GhostUser {
@@ -83,6 +101,12 @@ pub struct GhostUser {
     pub avatar_url: Option<String>,
     /// Banner image URL
     pub banner_url: Option<String>,
+    /// Profile URL
+    pub profile_url: Option<String>,
+    /// Location
+    pub location: Option<String>,
+    /// Website URL
+    pub website: Option<String>,
     /// Number of followers
     pub followers_count: Option<u64>,
     /// Number of accounts following
@@ -91,8 +115,10 @@ pub struct GhostUser {
     pub posts_count: Option<u64>,
     /// Whether the account is verified
     pub is_verified: Option<bool>,
-    /// Whether the account is private
+    /// Whether the account is private/protected
     pub is_private: Option<bool>,
+    /// Whether the account is a bot
+    pub is_bot: Option<bool>,
     /// Account creation timestamp
     pub created_at: Option<i64>,
     /// Raw platform-specific data
@@ -118,6 +144,10 @@ impl GhostUser {
     }
 }
 
+// ============================================================================
+// Media Types
+// ============================================================================
+
 /// Media attachment in a post
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GhostMedia {
@@ -137,6 +167,10 @@ pub struct GhostMedia {
     pub duration_secs: Option<f64>,
     /// Alt text for accessibility
     pub alt_text: Option<String>,
+    /// MIME content type
+    pub content_type: Option<String>,
+    /// File size in bytes
+    pub size_bytes: Option<u64>,
 }
 
 impl GhostMedia {
@@ -152,6 +186,8 @@ impl GhostMedia {
             height: None,
             duration_secs: None,
             alt_text: None,
+            content_type: None,
+            size_bytes: None,
         }
     }
 
@@ -173,249 +209,9 @@ pub enum MediaType {
     Unknown,
 }
 
-/// Raw, unprocessed data returned by scrapers (HTML, JSON, etc.)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PayloadBlob {
-    /// The raw content as bytes
-    pub data: Vec<u8>,
-    /// Content type (html, json, etc.)
-    pub content_type: PayloadContentType,
-    /// Source URL where this data was fetched from
-    pub source_url: Option<String>,
-    /// HTTP status code
-    pub status_code: u16,
-    /// Response headers
-    pub headers: std::collections::HashMap<String, String>,
-    /// Timestamp when this blob was created
-    pub fetched_at: i64,
-}
-
-impl PayloadBlob {
-    /// Creates a new PayloadBlob
-    pub fn new(data: Vec<u8>, content_type: PayloadContentType) -> Self {
-        // TODO: Implement PayloadBlob construction
-        Self {
-            data,
-            content_type,
-            source_url: None,
-            status_code: 200,
-            headers: std::collections::HashMap::new(),
-            fetched_at: 0,
-        }
-    }
-
-    /// Parses the blob as UTF-8 string
-    pub fn as_text(&self) -> Result<&str, crate::GhostError> {
-        // TODO: Implement UTF-8 parsing with proper error handling
-        std::str::from_utf8(&self.data)
-            .map_err(|e| crate::GhostError::ParseError(e.to_string()))
-    }
-
-    /// Parses the blob as JSON
-    pub fn as_json<T: for<'de> Deserialize<'de>>(&self) -> Result<T, crate::GhostError> {
-        // TODO: Implement JSON parsing with proper error handling
-        serde_json::from_slice(&self.data)
-            .map_err(|e| crate::GhostError::ParseError(e.to_string()))
-    }
-}
-
-/// Type of payload content
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum PayloadContentType {
-    Html,
-    Json,
-    Xml,
-    Binary,
-    Text,
-    Unknown,
-}
-
-/// Raw context passed to scrapers
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RawContext {
-    /// The URL or endpoint to fetch
-    pub target: String,
-    /// HTTP method
-    pub method: HttpMethod,
-    /// Request headers
-    pub headers: std::collections::HashMap<String, String>,
-    /// Request body
-    pub body: Option<Vec<u8>>,
-    /// Proxy configuration
-    pub proxy: Option<ProxyConfig>,
-    /// Session/cookie data
-    pub session: Option<SessionData>,
-    /// Platform-specific parameters
-    pub platform_params: serde_json::Value,
-}
-
-impl RawContext {
-    /// Creates a new RawContext for a GET request
-    pub fn get(target: impl Into<String>) -> Self {
-        // TODO: Implement RawContext construction for GET requests
-        Self {
-            target: target.into(),
-            method: HttpMethod::Get,
-            headers: std::collections::HashMap::new(),
-            body: None,
-            proxy: None,
-            session: None,
-            platform_params: serde_json::Value::Null,
-        }
-    }
-
-    /// Creates a new RawContext for a POST request
-    pub fn post(target: impl Into<String>, body: Option<Vec<u8>>) -> Self {
-        // TODO: Implement RawContext construction for POST requests
-        Self {
-            target: target.into(),
-            method: HttpMethod::Post,
-            headers: std::collections::HashMap::new(),
-            body,
-            proxy: None,
-            session: None,
-            platform_params: serde_json::Value::Null,
-        }
-    }
-
-    /// Adds a header to the context
-    pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        // TODO: Implement header addition with validation
-        self.headers.insert(key.into(), value.into());
-        self
-    }
-
-    /// Sets the proxy configuration
-    pub fn with_proxy(mut self, proxy: ProxyConfig) -> Self {
-        // TODO: Implement proxy configuration
-        self.proxy = Some(proxy);
-        self
-    }
-
-    /// Sets the session data
-    pub fn with_session(mut self, session: SessionData) -> Self {
-        // TODO: Implement session configuration
-        self.session = Some(session);
-        self
-    }
-}
-
-/// HTTP methods
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Delete,
-    Patch,
-    Head,
-    Options,
-}
-
-/// Proxy configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProxyConfig {
-    /// Proxy URL (e.g., socks5://user:pass@host:port)
-    pub url: String,
-    /// Proxy protocol
-    pub protocol: ProxyProtocol,
-    /// Username for authentication
-    pub username: Option<String>,
-    /// Password for authentication
-    pub password: Option<String>,
-    /// Session ID for sticky sessions
-    pub session_id: Option<String>,
-}
-
-impl ProxyConfig {
-    /// Creates a new ProxyConfig from a URL string
-    pub fn from_url(url: impl Into<String>) -> Result<Self, crate::GhostError> {
-        // TODO: Implement ProxyConfig parsing from URL
-        Ok(Self {
-            url: url.into(),
-            protocol: ProxyProtocol::Http,
-            username: None,
-            password: None,
-            session_id: None,
-        })
-    }
-
-    /// Parses proxy URL and extracts components
-    pub fn parse_url(&self) -> Result<(String, u16), crate::GhostError> {
-        // TODO: Implement URL parsing to extract host and port
-        Err(crate::GhostError::NotImplemented("parse_url".into()))
-    }
-}
-
-/// Proxy protocol types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ProxyProtocol {
-    Http,
-    Https,
-    Socks5,
-    Socks4,
-}
-
-/// Session/credential data
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionData {
-    /// Session type
-    pub session_type: SessionType,
-    /// Raw cookie string
-    pub cookies: Option<String>,
-    /// Bearer token
-    pub bearer_token: Option<String>,
-    /// Platform-specific auth tokens
-    pub auth_tokens: std::collections::HashMap<String, String>,
-    /// Session ID
-    pub session_id: Option<String>,
-}
-
-impl SessionData {
-    /// Creates a new SessionData from a cookie string
-    pub fn from_cookies(cookies: impl Into<String>) -> Self {
-        // TODO: Implement SessionData construction from cookies
-        Self {
-            session_type: SessionType::Cookies,
-            cookies: Some(cookies.into()),
-            bearer_token: None,
-            auth_tokens: std::collections::HashMap::new(),
-            session_id: None,
-        }
-    }
-
-    /// Creates a new SessionData from a bearer token
-    pub fn from_bearer(token: impl Into<String>) -> Self {
-        // TODO: Implement SessionData construction from bearer token
-        Self {
-            session_type: SessionType::Bearer,
-            cookies: None,
-            bearer_token: Some(token.into()),
-            auth_tokens: std::collections::HashMap::new(),
-            session_id: None,
-        }
-    }
-
-    /// Validates the session data
-    pub fn validate(&self) -> Result<(), crate::GhostError> {
-        // TODO: Implement session validation
-        Ok(())
-    }
-}
-
-/// Type of session authentication
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SessionType {
-    Cookies,
-    Bearer,
-    ApiKey,
-    Oauth2,
-    Guest,
-}
+// ============================================================================
+// Context Types
+// ============================================================================
 
 /// GhostContext for multi-tenant request configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -431,7 +227,7 @@ pub struct GhostContext {
     /// Budget limits
     pub budget: Option<BudgetLimits>,
     /// Additional metadata
-    pub metadata: std::collections::HashMap<String, String>,
+    pub metadata: HashMap<String, String>,
 }
 
 impl GhostContext {
@@ -456,7 +252,7 @@ impl Default for GhostContext {
             session: None,
             strategy: Strategy::default(),
             budget: None,
-            metadata: std::collections::HashMap::new(),
+            metadata: HashMap::new(),
         }
     }
 }
@@ -469,7 +265,7 @@ pub struct GhostContextBuilder {
     session: Option<SessionData>,
     strategy: Strategy,
     budget: Option<BudgetLimits>,
-    metadata: std::collections::HashMap<String, String>,
+    metadata: HashMap<String, String>,
 }
 
 impl GhostContextBuilder {
@@ -542,6 +338,10 @@ impl GhostContextBuilder {
         }
     }
 }
+
+// ============================================================================
+// Strategy Types
+// ============================================================================
 
 /// Routing strategy for request handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -617,4 +417,260 @@ impl Default for BudgetLimits {
             alert_at_percent: 80,
         }
     }
+}
+
+// ============================================================================
+// Session Types
+// ============================================================================
+
+/// Session/credential data
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionData {
+    /// Session type
+    pub session_type: SessionType,
+    /// Raw cookie string
+    pub cookies: Option<String>,
+    /// Bearer token
+    pub bearer_token: Option<String>,
+    /// Platform-specific auth tokens
+    pub auth_tokens: HashMap<String, String>,
+    /// Session ID
+    pub session_id: Option<String>,
+}
+
+impl SessionData {
+    /// Creates a new SessionData from a cookie string
+    pub fn from_cookies(cookies: impl Into<String>) -> Self {
+        // TODO: Implement SessionData construction from cookies
+        Self {
+            session_type: SessionType::Cookies,
+            cookies: Some(cookies.into()),
+            bearer_token: None,
+            auth_tokens: HashMap::new(),
+            session_id: None,
+        }
+    }
+
+    /// Creates a new SessionData from a bearer token
+    pub fn from_bearer(token: impl Into<String>) -> Self {
+        // TODO: Implement SessionData construction from bearer token
+        Self {
+            session_type: SessionType::Bearer,
+            cookies: None,
+            bearer_token: Some(token.into()),
+            auth_tokens: HashMap::new(),
+            session_id: None,
+        }
+    }
+
+    /// Validates the session data
+    pub fn validate(&self) -> Result<(), crate::GhostError> {
+        // TODO: Implement session validation
+        Ok(())
+    }
+}
+
+/// Type of session authentication
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionType {
+    Cookies,
+    Bearer,
+    ApiKey,
+    Oauth2,
+    Guest,
+}
+
+// ============================================================================
+// Proxy Types
+// ============================================================================
+
+/// Proxy configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProxyConfig {
+    /// Proxy URL (e.g., socks5://user:pass@host:port)
+    pub url: String,
+    /// Proxy protocol
+    pub protocol: ProxyProtocol,
+    /// Username for authentication
+    pub username: Option<String>,
+    /// Password for authentication
+    pub password: Option<String>,
+    /// Session ID for sticky sessions
+    pub session_id: Option<String>,
+}
+
+impl ProxyConfig {
+    /// Creates a new ProxyConfig from a URL string
+    pub fn from_url(url: impl Into<String>) -> Result<Self, crate::GhostError> {
+        // TODO: Implement ProxyConfig parsing from URL
+        Ok(Self {
+            url: url.into(),
+            protocol: ProxyProtocol::Http,
+            username: None,
+            password: None,
+            session_id: None,
+        })
+    }
+
+    /// Parses proxy URL and extracts components
+    pub fn parse_url(&self) -> Result<(String, u16), crate::GhostError> {
+        // TODO: Implement URL parsing to extract host and port
+        Err(crate::GhostError::NotImplemented("parse_url".into()))
+    }
+}
+
+/// Proxy protocol types
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProxyProtocol {
+    Http,
+    Https,
+    Socks5,
+    Socks4,
+}
+
+// ============================================================================
+// Raw Data Types
+// ============================================================================
+
+/// Raw, unprocessed data returned by scrapers (HTML, JSON, etc.)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PayloadBlob {
+    /// The raw content as bytes
+    pub data: Vec<u8>,
+    /// Content type (html, json, etc.)
+    pub content_type: PayloadContentType,
+    /// Source URL where this data was fetched from
+    pub source_url: Option<String>,
+    /// HTTP status code
+    pub status_code: u16,
+    /// Response headers
+    pub headers: HashMap<String, String>,
+    /// Timestamp when this blob was created
+    pub fetched_at: i64,
+}
+
+impl PayloadBlob {
+    /// Creates a new PayloadBlob
+    pub fn new(data: Vec<u8>, content_type: PayloadContentType) -> Self {
+        // TODO: Implement PayloadBlob construction
+        Self {
+            data,
+            content_type,
+            source_url: None,
+            status_code: 200,
+            headers: HashMap::new(),
+            fetched_at: 0,
+        }
+    }
+
+    /// Parses the blob as UTF-8 string
+    pub fn as_text(&self) -> Result<&str, crate::GhostError> {
+        // TODO: Implement UTF-8 parsing with proper error handling
+        std::str::from_utf8(&self.data)
+            .map_err(|e| crate::GhostError::ParseError(e.to_string()))
+    }
+
+    /// Parses the blob as JSON
+    pub fn as_json<T: for<'de> Deserialize<'de>>(&self) -> Result<T, crate::GhostError> {
+        // TODO: Implement JSON parsing with proper error handling
+        serde_json::from_slice(&self.data)
+            .map_err(|e| crate::GhostError::ParseError(e.to_string()))
+    }
+}
+
+/// Type of payload content
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PayloadContentType {
+    Html,
+    Json,
+    Xml,
+    Binary,
+    Text,
+    Unknown,
+}
+
+/// Raw context passed to scrapers
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RawContext {
+    /// The URL or endpoint to fetch
+    pub target: String,
+    /// HTTP method
+    pub method: HttpMethod,
+    /// Request headers
+    pub headers: HashMap<String, String>,
+    /// Request body
+    pub body: Option<Vec<u8>>,
+    /// Proxy configuration
+    pub proxy: Option<ProxyConfig>,
+    /// Session/cookie data
+    pub session: Option<SessionData>,
+    /// Platform-specific parameters
+    pub platform_params: serde_json::Value,
+}
+
+impl RawContext {
+    /// Creates a new RawContext for a GET request
+    pub fn get(target: impl Into<String>) -> Self {
+        // TODO: Implement RawContext construction for GET requests
+        Self {
+            target: target.into(),
+            method: HttpMethod::Get,
+            headers: HashMap::new(),
+            body: None,
+            proxy: None,
+            session: None,
+            platform_params: serde_json::Value::Null,
+        }
+    }
+
+    /// Creates a new RawContext for a POST request
+    pub fn post(target: impl Into<String>, body: Option<Vec<u8>>) -> Self {
+        // TODO: Implement RawContext construction for POST requests
+        Self {
+            target: target.into(),
+            method: HttpMethod::Post,
+            headers: HashMap::new(),
+            body,
+            proxy: None,
+            session: None,
+            platform_params: serde_json::Value::Null,
+        }
+    }
+
+    /// Adds a header to the context
+    pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        // TODO: Implement header addition with validation
+        self.headers.insert(key.into(), value.into());
+        self
+    }
+
+    /// Sets the proxy configuration
+    pub fn with_proxy(mut self, proxy: ProxyConfig) -> Self {
+        // TODO: Implement proxy configuration
+        self.proxy = Some(proxy);
+        self
+    }
+
+    /// Sets the session data
+    pub fn with_session(mut self, session: SessionData) -> Self {
+        // TODO: Implement session configuration
+        self.session = Some(session);
+        self
+    }
+}
+
+/// HTTP methods
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Delete,
+    Patch,
+    Head,
+    Options,
 }

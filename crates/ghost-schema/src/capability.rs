@@ -1,6 +1,12 @@
 //! Capability definitions for workers and adapters
+//!
+//! This module defines capabilities that workers can provide and
+//! the tier system for capability classification.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+use crate::{GhostError, Platform};
 
 /// Defines what a worker can do
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -51,10 +57,10 @@ pub enum Capability {
 
 impl Capability {
     /// Returns all capabilities for a given platform
-    pub fn for_platform(platform: crate::Platform) -> Vec<Capability> {
+    pub fn for_platform(platform: Platform) -> Vec<Capability> {
         // TODO: Implement platform capability mapping
         match platform {
-            crate::Platform::X => vec![
+            Platform::X => vec![
                 Capability::XRead,
                 Capability::XSearch,
                 Capability::XUserRead,
@@ -62,14 +68,14 @@ impl Capability {
                 Capability::XTimeline,
                 Capability::XWrite,
             ],
-            crate::Platform::Threads => vec![
+            Platform::Threads => vec![
                 Capability::ThreadsRead,
                 Capability::ThreadsSearch,
                 Capability::ThreadsUserRead,
                 Capability::ThreadsTimeline,
                 Capability::ThreadsWrite,
             ],
-            crate::Platform::Unknown => vec![],
+            Platform::Unknown => vec![],
         }
     }
 
@@ -106,6 +112,25 @@ impl Capability {
             Capability::RequestBased => 0.1,
             Capability::BatchProcessing => 0.05,
             _ => 0.1,
+        }
+    }
+
+    /// Returns the platform for this capability
+    pub fn platform(&self) -> Option<Platform> {
+        // TODO: Implement platform extraction
+        match self {
+            Capability::XRead
+            | Capability::XSearch
+            | Capability::XUserRead
+            | Capability::XTrending
+            | Capability::XTimeline
+            | Capability::XWrite => Some(Platform::X),
+            Capability::ThreadsRead
+            | Capability::ThreadsSearch
+            | Capability::ThreadsUserRead
+            | Capability::ThreadsTimeline
+            | Capability::ThreadsWrite => Some(Platform::Threads),
+            _ => None,
         }
     }
 }
@@ -146,6 +171,16 @@ impl CapabilityTier {
             CapabilityTier::Fast => 500,
             CapabilityTier::Heavy => 3000,
             CapabilityTier::Official => 200,
+        }
+    }
+
+    /// Returns the cost multiplier for this tier
+    pub fn cost_multiplier(&self) -> f64 {
+        // TODO: Implement cost multiplier
+        match self {
+            CapabilityTier::Fast => 0.1,
+            CapabilityTier::Heavy => 0.5,
+            CapabilityTier::Official => 1.0,
         }
     }
 }
@@ -194,15 +229,15 @@ impl CapabilityManifest {
     }
 
     /// Validates the manifest
-    pub fn validate(&self) -> Result<(), crate::GhostError> {
+    pub fn validate(&self) -> Result<(), GhostError> {
         // TODO: Implement manifest validation
         if self.worker_id.is_empty() {
-            return Err(crate::GhostError::ValidationError(
+            return Err(GhostError::ValidationError(
                 "worker_id cannot be empty".into(),
             ));
         }
         if self.health_threshold < 0.0 || self.health_threshold > 1.0 {
-            return Err(crate::GhostError::ValidationError(
+            return Err(GhostError::ValidationError(
                 "health_threshold must be between 0.0 and 1.0".into(),
             ));
         }
@@ -210,15 +245,15 @@ impl CapabilityManifest {
     }
 
     /// Loads a manifest from JSON
-    pub fn from_json(json: &str) -> Result<Self, crate::GhostError> {
+    pub fn from_json(json: &str) -> Result<Self, GhostError> {
         // TODO: Implement JSON deserialization with validation
-        serde_json::from_str(json).map_err(|e| crate::GhostError::ParseError(e.to_string()))
+        serde_json::from_str(json).map_err(|e| GhostError::ParseError(e.to_string()))
     }
 
     /// Exports the manifest to JSON
-    pub fn to_json(&self) -> Result<String, crate::GhostError> {
+    pub fn to_json(&self) -> Result<String, GhostError> {
         // TODO: Implement JSON serialization
-        serde_json::to_string_pretty(self).map_err(|e| crate::GhostError::ParseError(e.to_string()))
+        serde_json::to_string_pretty(self).map_err(|e| GhostError::ParseError(e.to_string()))
     }
 }
 
@@ -256,6 +291,12 @@ impl WorkerType {
             WorkerType::Unknown => None,
         }
     }
+
+    /// Returns whether this worker type is browser-based
+    pub fn is_browser_based(&self) -> bool {
+        // TODO: Implement browser detection
+        matches!(self, WorkerType::NodeJs | WorkerType::Python)
+    }
 }
 
 /// Type of FFI bridge
@@ -270,4 +311,26 @@ pub enum BridgeType {
     Grpc,
     /// Unix Domain Socket
     Uds,
+}
+
+impl BridgeType {
+    /// Returns whether this bridge requires external runtime
+    pub fn requires_runtime(&self) -> bool {
+        // TODO: Implement runtime requirement check
+        matches!(
+            self,
+            BridgeType::PyO3 | BridgeType::Napi | BridgeType::Grpc
+        )
+    }
+
+    /// Returns the runtime name
+    pub fn runtime_name(&self) -> &'static str {
+        // TODO: Implement runtime name
+        match self {
+            BridgeType::PyO3 => "python",
+            BridgeType::Napi => "node",
+            BridgeType::Grpc => "go",
+            BridgeType::Uds => "uds",
+        }
+    }
 }

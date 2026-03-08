@@ -2,11 +2,12 @@
 //!
 //! This crate provides FFI bridges for integrating Python, Node.js, and Go
 //! scrapers with the Rust core.
+//!
+//! All types are imported from `ghost-schema` - the single source of truth.
 
 mod bridge;
 mod worker;
 mod protocol;
-mod error;
 
 #[cfg(feature = "pyo3")]
 mod python;
@@ -17,7 +18,16 @@ mod nodejs;
 pub use bridge::*;
 pub use worker::*;
 pub use protocol::*;
-pub use error::*;
 
 // Re-export GhostWorker trait
 pub use ghost_core::GhostWorker;
+
+// Re-export bridge types from ghost-schema
+pub use ghost_schema::{
+    BridgeType, BridgeStats, BridgeConfig,
+    WorkerProtocol, SerializationFormat, MessageType,
+    WorkerRequest, WorkerResponse, MessageEnvelope,
+    WorkerManifestMessage, HealthCheckMessage, HealthCheckResponse,
+    GhostError, PayloadBlob, RawContext, CapabilityManifest, Platform,
+    Capability, CapabilityTier,
+};

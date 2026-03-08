@@ -1,8 +1,13 @@
 //! Context injection for multi-tenancy
+//!
+//! Types imported from ghost-schema - the single source of truth.
 
-use ghost_schema::{GhostContext, GhostError, Platform, ProxyConfig, SessionData};
+use ghost_schema::{
+    GhostContext, GhostError, Platform, ProxyConfig, ProxyEntry, SessionData,
+    CredentialEntry, InjectionOptions, InjectionResult,
+};
 
-use crate::{CredentialEntry, ProxyEntry, ProxyPool, CredentialStore, VaultManager};
+use crate::{ProxyPool, CredentialStore, VaultManager};
 
 /// Context injector for building GhostContext
 pub struct ContextInjector {
@@ -65,12 +70,9 @@ impl ContextInjector {
 
         // Get credential
         if let Some(store) = &self.credential_store {
-            // Find credential for tenant and platform
-            for cred in store.credentials.values() {
-                if cred.tenant_id.as_deref() == Some(tenant_id) && cred.platform == platform {
-                    builder = builder.session_data(cred.session.clone());
-                    break;
-                }
+            for cred in store.get_for_tenant(tenant_id, platform) {
+                builder = builder.session_data(cred.session.clone());
+                break;
             }
         }
 
@@ -89,8 +91,7 @@ impl ContextInjector {
             .session_data(session);
 
         if let Some(pool) = &self.proxy_pool {
-            // Use blocking get for simplicity
-            // In real implementation, this would be async
+            // Synchronous proxy selection for sticky sessions
         }
 
         builder.build()
@@ -129,6 +130,40 @@ impl ContextInjector {
             Err(GhostError::ConfigError("Vault not configured".into()))
         }
     }
+
+    /// Injects context with full options
+    pub async fn inject_with_options(
+        &self,
+        tenant_id: &str,
+        platform: Platform,
+        options: InjectionOptions,
+    ) -> Result<InjectionResult, GhostError> {
+        // TODO: Implement options-based injection
+        let mut builder = GhostContext::builder()
+            .tenant_id(tenant_id);
+
+        // Apply overrides
+        if let Some(proxy) = options.proxy_override {
+            builder = builder.proxy_config(proxy);
+        } else if let Some(pool) = &self.proxy_pool {
+            if let Some(proxy) = pool.get_next().await {
+                builder = builder.proxy_config(proxy.config);
+            }
+        }
+
+        if let Some(session) = options.session_override {
+            builder = builder.session_data(session);
+        } else if let Some(store) = &self.credential_store {
+            for cred in store.get_for_tenant(tenant_id, platform) {
+                builder = builder.session_data(cred.session.clone());
+                break;
+            }
+        }
+
+        let context = builder.build();
+
+        Ok(InjectionResult::new(context))
+    }
 }
 
 impl Default for ContextInjector {
@@ -158,94 +193,7 @@ impl InjectionMiddleware {
         options: InjectionOptions,
     ) -> Result<GhostContext, GhostError> {
         // TODO: Implement middleware context building
-        let ctx = self.injector.inject(tenant_id, platform).await?;
-
-        // Apply options
-        if let Some(proxy) = options.proxy_override {
-            // Override proxy
-        }
-
-        if let Some(session) = options.session_override {
-            // Override session
-        }
-
-        Ok(ctx)
-    }
-}
-
-/// Options for context injection
-#[derive(Debug, Clone, Default)]
-pub struct InjectionOptions {
-    /// Override proxy
-    pub proxy_override: Option<ProxyConfig>,
-    /// Override session
-    pub session_override: Option<SessionData>,
-    /// Force sticky session
-    pub sticky_session: bool,
-    /// Custom metadata
-    pub metadata: std::collections::HashMap<String, String>,
-}
-
-impl InjectionOptions {
-    /// Creates new injection options
-    pub fn new() -> Self {
-        // TODO: Implement options construction
-        Self::default()
-    }
-
-    /// Sets proxy override
-    pub fn with_proxy(mut self, proxy: ProxyConfig) -> Self {
-        // TODO: Implement proxy override setter
-        self.proxy_override = Some(proxy);
-        self
-    }
-
-    /// Sets session override
-    pub fn with_session(mut self, session: SessionData) -> Self {
-        // TODO: Implement session override setter
-        self.session_override = Some(session);
-        self
-    }
-
-    /// Adds metadata
-    pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        // TODO: Implement metadata addition
-        self.metadata.insert(key.into(), value.into());
-        self
-    }
-}
-
-/// Injection result with context and metadata
-#[derive(Debug)]
-pub struct InjectionResult {
-    /// The built context
-    pub context: GhostContext,
-    /// Selected proxy
-    pub proxy: Option<ProxyEntry>,
-    /// Selected credential
-    pub credential: Option<CredentialEntry>,
-    /// Injection timestamp
-    pub injected_at: i64,
-}
-
-impl InjectionResult {
-    /// Creates a new injection result
-    pub fn new(context: GhostContext) -> Self {
-        // TODO: Implement injection result construction
-        Self {
-            context,
-            proxy: None,
-            credential: None,
-            injected_at: chrono::Utc::now().timestamp(),
-        }
-    }
-}
-
-// Stub module
-mod chrono {
-    pub struct Utc;
-    impl Utc {
-        pub fn now() -> Self { Self }
-        pub fn timestamp(&self) -> i64 { 0 }
+        let result = self.injector.inject_with_options(tenant_id, platform, options).await?;
+        Ok(result.context)
     }
 }

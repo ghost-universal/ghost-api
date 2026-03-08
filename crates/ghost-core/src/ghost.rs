@@ -2,8 +2,12 @@
 
 use std::sync::Arc;
 
+use ghost_schema::{
+    GhostContext, GhostError, GhostPost, Platform, Strategy,
+    Capability, HealthStatus, CapabilityManifest, PayloadBlob,
+};
+
 use crate::{GhostRouter, GhostConfig, GhostEvent, HealthEngine, WorkerRegistry};
-use ghost_schema::{GhostContext, GhostError, GhostPost, Platform, Strategy};
 
 /// The main Ghost API instance
 pub struct Ghost {
@@ -67,7 +71,7 @@ impl Ghost {
     }
 
     /// Returns capabilities available for a platform
-    pub fn capabilities_for(&self, platform: &str) -> Vec<ghost_schema::Capability> {
+    pub fn capabilities_for(&self, platform: &str) -> Vec<Capability> {
         // TODO: Implement capability lookup by platform name
         self.workers.capabilities_for_platform(platform)
     }
@@ -182,67 +186,4 @@ impl<'a> PlatformClient<'a> {
         // TODO: Implement timeline retrieval with routing
         self.ghost.router.route_timeline(self.platform, user_id, ctx, strategy).await
     }
-}
-
-/// Aggregated health status
-#[derive(Debug, Clone)]
-pub struct HealthStatus {
-    /// Number of healthy workers
-    pub healthy_count: usize,
-    /// Number of degraded workers
-    pub degraded_count: usize,
-    /// Number of unhealthy workers
-    pub unhealthy_count: usize,
-    /// Total number of workers
-    pub total_count: usize,
-    /// Average health score
-    pub avg_score: f64,
-    /// Per-platform status
-    pub platform_status: std::collections::HashMap<Platform, PlatformHealthStatus>,
-}
-
-impl HealthStatus {
-    /// Creates a new empty health status
-    pub fn new() -> Self {
-        // TODO: Implement health status construction
-        Self {
-            healthy_count: 0,
-            degraded_count: 0,
-            unhealthy_count: 0,
-            total_count: 0,
-            avg_score: 0.0,
-            platform_status: std::collections::HashMap::new(),
-        }
-    }
-
-    /// Returns whether all workers are healthy
-    pub fn all_healthy(&self) -> bool {
-        // TODO: Implement health check
-        self.unhealthy_count == 0 && self.degraded_count == 0
-    }
-
-    /// Returns whether any workers are available
-    pub fn has_available_workers(&self) -> bool {
-        // TODO: Implement availability check
-        self.healthy_count > 0 || self.degraded_count > 0
-    }
-}
-
-impl Default for HealthStatus {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Per-platform health status
-#[derive(Debug, Clone)]
-pub struct PlatformHealthStatus {
-    /// Platform
-    pub platform: Platform,
-    /// Available workers for this platform
-    pub available_workers: usize,
-    /// Average latency in ms
-    pub avg_latency_ms: u64,
-    /// Health score
-    pub health_score: f64,
 }

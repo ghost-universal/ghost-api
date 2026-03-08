@@ -1,9 +1,13 @@
 //! Secret vault integration
+//!
+//! Types imported from ghost-schema - the single source of truth.
 
 use async_trait::async_trait;
-use ghost_schema::GhostError;
+use ghost_schema::{
+    GhostError, VaultProviderType, VaultConfig, CachedSecret,
+};
 
-/// Secret vault provider
+/// Secret vault provider trait
 #[async_trait]
 pub trait VaultProvider: Send + Sync {
     /// Gets a secret by path
@@ -20,70 +24,6 @@ pub trait VaultProvider: Send + Sync {
 
     /// Returns the provider name
     fn provider_name(&self) -> &'static str;
-}
-
-/// Vault configuration
-#[derive(Debug, Clone)]
-pub struct VaultConfig {
-    /// Provider type
-    pub provider: VaultProviderType,
-    /// Cache TTL in seconds
-    pub cache_ttl_secs: u64,
-    /// Whether to encrypt cached secrets
-    pub cache_encrypted: bool,
-    /// Whether to enable audit logging
-    pub audit_enabled: bool,
-    /// Audit log path
-    pub audit_log: Option<String>,
-}
-
-impl VaultConfig {
-    /// Creates a new vault config
-    pub fn new(provider: VaultProviderType) -> Self {
-        // TODO: Implement vault config construction
-        Self {
-            provider,
-            cache_ttl_secs: 300,
-            cache_encrypted: true,
-            audit_enabled: true,
-            audit_log: None,
-        }
-    }
-}
-
-impl Default for VaultConfig {
-    fn default() -> Self {
-        Self::new(VaultProviderType::Memory)
-    }
-}
-
-/// Supported vault providers
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VaultProviderType {
-    /// In-memory (for testing)
-    Memory,
-    /// AWS Secrets Manager
-    AwsSecretsManager,
-    /// HashiCorp Vault
-    HashiCorpVault,
-    /// GCP Secret Manager
-    GcpSecretManager,
-    /// Azure Key Vault
-    AzureKeyVault,
-}
-
-impl VaultProviderType {
-    /// Returns the provider name
-    pub fn name(&self) -> &'static str {
-        // TODO: Implement name getter
-        match self {
-            VaultProviderType::Memory => "memory",
-            VaultProviderType::AwsSecretsManager => "aws_secrets_manager",
-            VaultProviderType::HashiCorpVault => "hashicorp_vault",
-            VaultProviderType::GcpSecretManager => "gcp_secret_manager",
-            VaultProviderType::AzureKeyVault => "azure_key_vault",
-        }
-    }
 }
 
 /// In-memory vault provider (for testing)
@@ -181,11 +121,7 @@ impl VaultManager {
         let value = self.provider.get_secret(path).await?;
         self.cache.insert(
             path.to_string(),
-            CachedSecret {
-                value: value.clone(),
-                cached_at: chrono::Utc::now().timestamp(),
-                ttl_secs: self.config.cache_ttl_secs,
-            },
+            CachedSecret::new(&value, self.config.cache_ttl_secs),
         );
 
         Ok(value)
@@ -195,6 +131,18 @@ impl VaultManager {
     pub async fn put(&self, path: &str, value: &str) -> Result<(), GhostError> {
         // TODO: Implement secret storage
         self.provider.put_secret(path, value).await
+    }
+
+    /// Deletes a secret
+    pub async fn delete(&self, path: &str) -> Result<(), GhostError> {
+        // TODO: Implement secret deletion
+        self.provider.delete_secret(path).await
+    }
+
+    /// Lists secrets
+    pub async fn list(&self, prefix: &str) -> Result<Vec<String>, GhostError> {
+        // TODO: Implement secret listing
+        self.provider.list_secrets(prefix).await
     }
 
     /// Invalidates the cache for a path
@@ -208,21 +156,10 @@ impl VaultManager {
         // TODO: Implement cache clearing
         self.cache.clear();
     }
-}
 
-/// Cached secret entry
-#[derive(Debug, Clone)]
-struct CachedSecret {
-    value: String,
-    cached_at: i64,
-    ttl_secs: u64,
-}
-
-impl CachedSecret {
-    fn is_expired(&self) -> bool {
-        // TODO: Implement expiration check
-        let now = chrono::Utc::now().timestamp();
-        now > self.cached_at + self.ttl_secs as i64
+    /// Returns the provider name
+    pub fn provider_name(&self) -> &'static str {
+        self.provider.provider_name()
     }
 }
 
@@ -244,13 +181,4 @@ pub fn parse_vault_reference(reference: &str) -> Option<(VaultProviderType, Stri
     };
 
     Some((provider, parts[2].to_string()))
-}
-
-// Stub module
-mod chrono {
-    pub struct Utc;
-    impl Utc {
-        pub fn now() -> Self { Self }
-        pub fn timestamp(&self) -> i64 { 0 }
-    }
 }

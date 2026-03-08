@@ -1,8 +1,14 @@
 //! Request routing logic
+//!
+//! This module handles routing requests to appropriate workers
+//! based on strategy, health, and capability.
 
 use std::sync::Arc;
 
-use ghost_schema::{Capability, GhostContext, GhostError, GhostPost, GhostUser, Platform, Strategy};
+use ghost_schema::{
+    Capability, GhostContext, GhostError, GhostPost, GhostUser, Platform, Strategy,
+    CapabilityTier, WorkerSelection, PayloadBlob, RawContext,
+};
 
 use crate::{FallbackEngine, GhostConfig, HealthEngine, WorkerRegistry};
 
@@ -171,10 +177,7 @@ impl GhostRouter {
             return Err(GhostError::WorkersExhausted("No candidates".into()));
         }
 
-        Ok(WorkerSelection {
-            worker_id: candidates[0].clone(),
-            tier: ghost_schema::CapabilityTier::Fast,
-        })
+        Ok(WorkerSelection::new(&candidates[0], CapabilityTier::Fast))
     }
 
     /// Selects worker by latency
@@ -184,10 +187,7 @@ impl GhostRouter {
             return Err(GhostError::WorkersExhausted("No candidates".into()));
         }
 
-        Ok(WorkerSelection {
-            worker_id: candidates[0].clone(),
-            tier: ghost_schema::CapabilityTier::Fast,
-        })
+        Ok(WorkerSelection::new(&candidates[0], CapabilityTier::Fast))
     }
 
     /// Selects worker by cost
@@ -197,10 +197,7 @@ impl GhostRouter {
             return Err(GhostError::WorkersExhausted("No candidates".into()));
         }
 
-        Ok(WorkerSelection {
-            worker_id: candidates[0].clone(),
-            tier: ghost_schema::CapabilityTier::Fast,
-        })
+        Ok(WorkerSelection::new(&candidates[0], CapabilityTier::Fast))
     }
 
     /// Selects worker using round-robin
@@ -210,10 +207,7 @@ impl GhostRouter {
             return Err(GhostError::WorkersExhausted("No candidates".into()));
         }
 
-        Ok(WorkerSelection {
-            worker_id: candidates[0].clone(),
-            tier: ghost_schema::CapabilityTier::Fast,
-        })
+        Ok(WorkerSelection::new(&candidates[0], CapabilityTier::Fast))
     }
 
     /// Selects official API worker first
@@ -223,10 +217,7 @@ impl GhostRouter {
             return Err(GhostError::WorkersExhausted("No candidates".into()));
         }
 
-        Ok(WorkerSelection {
-            worker_id: candidates[0].clone(),
-            tier: ghost_schema::CapabilityTier::Official,
-        })
+        Ok(WorkerSelection::new(&candidates[0], CapabilityTier::Official))
     }
 
     /// Selects only official API worker
@@ -236,10 +227,7 @@ impl GhostRouter {
             return Err(GhostError::WorkersExhausted("No candidates".into()));
         }
 
-        Ok(WorkerSelection {
-            worker_id: candidates[0].clone(),
-            tier: ghost_schema::CapabilityTier::Official,
-        })
+        Ok(WorkerSelection::new(&candidates[0], CapabilityTier::Official))
     }
 
     /// Selects only scraper workers
@@ -249,10 +237,7 @@ impl GhostRouter {
             return Err(GhostError::WorkersExhausted("No candidates".into()));
         }
 
-        Ok(WorkerSelection {
-            worker_id: candidates[0].clone(),
-            tier: ghost_schema::CapabilityTier::Fast,
-        })
+        Ok(WorkerSelection::new(&candidates[0], CapabilityTier::Fast))
     }
 
     /// Executes get_post on a worker
@@ -325,45 +310,18 @@ impl GhostRouter {
     }
 
     /// Builds a RawContext from a GhostContext
-    fn build_raw_context(&self, platform: Platform, ctx: &GhostContext) -> ghost_schema::RawContext {
+    fn build_raw_context(&self, platform: Platform, ctx: &GhostContext) -> RawContext {
         // TODO: Implement RawContext construction
-        ghost_schema::RawContext::get(platform.base_url())
-            .with_proxy(ctx.proxy.clone().unwrap_or_else(|| ghost_schema::ProxyConfig {
-                url: String::new(),
-                protocol: ghost_schema::ProxyProtocol::Http,
-                username: None,
-                password: None,
-                session_id: None,
-            }))
+        RawContext::get(platform.base_url())
     }
 
     /// Parses a payload into a GhostPost
     async fn parse_post(
         &self,
-        payload: ghost_schema::PayloadBlob,
+        payload: PayloadBlob,
         platform: Platform,
     ) -> Result<GhostPost, GhostError> {
         // TODO: Implement payload parsing through adapter
         Err(GhostError::NotImplemented("parse_post".into()))
-    }
-}
-
-/// Result of worker selection
-#[derive(Debug, Clone)]
-pub struct WorkerSelection {
-    /// Selected worker ID
-    pub worker_id: String,
-    /// Tier of the selection
-    pub tier: ghost_schema::CapabilityTier,
-}
-
-impl WorkerSelection {
-    /// Creates a new worker selection
-    pub fn new(worker_id: impl Into<String>, tier: ghost_schema::CapabilityTier) -> Self {
-        // TODO: Implement selection construction
-        Self {
-            worker_id: worker_id.into(),
-            tier,
-        }
     }
 }

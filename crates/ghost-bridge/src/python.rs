@@ -99,6 +99,16 @@ impl PythonBridge {
         self.initialized = false;
         Ok(())
     }
+
+    /// Returns whether the bridge is initialized
+    pub fn is_initialized(&self) -> bool {
+        self.initialized
+    }
+
+    /// Returns the loaded modules
+    pub fn modules(&self) -> &[String] {
+        &self.modules
+    }
 }
 
 impl Default for PythonBridge {

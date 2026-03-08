@@ -1,4 +1,6 @@
 //! API route definitions
+//!
+//! Types imported from ghost-schema - the single source of truth.
 
 use axum::Router;
 use axum::routing::{get, post};
