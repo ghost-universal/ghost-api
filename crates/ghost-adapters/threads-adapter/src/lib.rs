@@ -10,15 +10,20 @@ mod relay;
 
 pub use adapter::ThreadsAdapter;
 
+// Re-export types from local module
+pub use types::*;
+
 // Re-export adapter types from ghost-schema
 pub use ghost_schema::{
     GhostPost, GhostUser, GhostMedia, MediaType,
     Platform, GhostError, PayloadBlob,
     // Threads-specific types
     ThreadsError, ThreadsUserMetadata, ThreadsPostMetadata, ThreadsPostType, ThreadsAuth, BioLink,
+    ThreadsMediaContainer, ThreadsUserResponse, ThreadsInsightsResponse,
+    ThreadsListResponse, ThreadsPagination, ThreadsErrorResponse,
+    ThreadsMention, LinkEntity, ReplyAudience, HideStatus,
     // Common adapter types
     AdapterParseResult, AdapterError, TrendingTopic,
-    UserMention, LinkEntity,
 };
 
 /// Parse Threads platform data into unified types

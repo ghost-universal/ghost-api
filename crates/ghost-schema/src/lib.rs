@@ -16,6 +16,8 @@ mod bridge;
 mod adapter;
 mod server;
 mod mock;
+mod mapping;
+mod adapter_types;
 
 // Re-export core types
 pub use types::*;
@@ -56,6 +58,12 @@ pub use server::*;
 // Re-export mock/testing types
 pub use mock::*;
 
+// Re-export mapping functions
+pub use mapping::*;
+
+// Re-export adapter-specific types
+pub use adapter_types::*;
+
 /// Prelude module with commonly used types
 pub mod prelude {
     pub use crate::{
@@ -77,5 +85,9 @@ pub mod prelude {
         VaultProviderType, VaultConfig, ProxyEntry, CredentialEntry,
         // Bridge types
         BridgeType, WorkerProtocol,
+        // Media types
+        MediaType,
+        // Mapping utilities
+        normalize_username, build_profile_url, parse_iso8601,
     };
 }
