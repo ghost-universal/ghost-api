@@ -1,0 +1,95 @@
+# Ghost API Docker Compose
+#
+# Development and testing environment configuration
+
+version: '3.8'
+
+services:
+  # ============================================
+  # Ghost API Server
+  # ============================================
+  ghost-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ghost-api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/etc/ghost-api:ro
+      - ghost-data:/var/lib/ghost-api
+    environment:
+      - RUST_LOG=debug
+      - GHOST_API_CONFIG=/etc/ghost-api/ghost.toml
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # ============================================
+  # Redis (optional - for distributed health state)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: ghost-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ============================================
+  # Prometheus (optional - for metrics)
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: ghost-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # ============================================
+  # Grafana (optional - for visualization)
+  # ============================================
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: ghost-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  ghost-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  default:
+    name: ghost-network

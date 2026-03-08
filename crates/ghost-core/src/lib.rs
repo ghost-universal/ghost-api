@@ -13,6 +13,9 @@ mod fallback;
 mod events;
 mod config;
 
+#[cfg(test)]
+mod mock;
+
 pub use ghost::*;
 pub use worker::*;
 pub use router::*;
@@ -20,6 +23,9 @@ pub use health::*;
 pub use fallback::*;
 pub use events::*;
 pub use config::*;
+
+#[cfg(test)]
+pub use mock::*;
 
 // Re-export commonly used types from ghost-schema
 pub use ghost_schema::{

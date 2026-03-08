@@ -1,6 +1,7 @@
 //! Secret vault integration
 //!
-//! Types imported from ghost-schema - the single source of truth.
+//! This module provides vault providers for secret management.
+//! Only memory and file-based storage are supported.
 
 use async_trait::async_trait;
 use ghost_schema::{
@@ -24,6 +25,9 @@ pub trait VaultProvider: Send + Sync {
 
     /// Returns the provider name
     fn provider_name(&self) -> &'static str;
+
+    /// Returns the provider type
+    fn provider_type(&self) -> VaultProviderType;
 }
 
 /// In-memory vault provider (for testing)
@@ -39,6 +43,19 @@ impl MemoryVault {
             secrets: std::collections::HashMap::new(),
         }
     }
+
+    /// Pre-populates the vault with secrets
+    pub fn with_secrets(mut self, secrets: std::collections::HashMap<String, String>) -> Self {
+        // TODO: Implement secrets pre-population
+        self.secrets = secrets;
+        self
+    }
+
+    /// Adds a secret
+    pub fn add_secret(&mut self, path: impl Into<String>, value: impl Into<String>) {
+        // TODO: Implement secret addition
+        self.secrets.insert(path.into(), value.into());
+    }
 }
 
 #[async_trait]
@@ -53,11 +70,13 @@ impl VaultProvider for MemoryVault {
 
     async fn put_secret(&self, path: &str, value: &str) -> Result<(), GhostError> {
         // TODO: Implement secret storage
+        let _ = (path, value);
         Ok(())
     }
 
     async fn delete_secret(&self, path: &str) -> Result<(), GhostError> {
         // TODO: Implement secret deletion
+        let _ = path;
         Ok(())
     }
 
@@ -74,11 +93,101 @@ impl VaultProvider for MemoryVault {
     fn provider_name(&self) -> &'static str {
         "memory"
     }
+
+    fn provider_type(&self) -> VaultProviderType {
+        VaultProviderType::Memory
+    }
 }
 
 impl Default for MemoryVault {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// File-based vault provider (persistent)
+pub struct FileVault {
+    /// Path to the vault file
+    file_path: String,
+    /// In-memory cache of secrets
+    secrets: std::collections::HashMap<String, String>,
+    /// Whether there are unsaved changes
+    dirty: bool,
+}
+
+impl FileVault {
+    /// Creates a new file vault
+    pub fn new(file_path: impl Into<String>) -> Self {
+        // TODO: Implement file vault construction
+        Self {
+            file_path: file_path.into(),
+            secrets: std::collections::HashMap::new(),
+            dirty: false,
+        }
+    }
+
+    /// Loads secrets from the file
+    pub fn load(&mut self) -> Result<(), GhostError> {
+        // TODO: Implement file loading
+        let _content = std::fs::read_to_string(&self.file_path);
+        Ok(())
+    }
+
+    /// Saves secrets to the file
+    pub fn save(&self) -> Result<(), GhostError> {
+        // TODO: Implement file saving
+        let _json = serde_json::to_string(&self.secrets);
+        Ok(())
+    }
+
+    /// Creates the vault file if it doesn't exist
+    pub fn ensure_exists(&self) -> Result<(), GhostError> {
+        // TODO: Implement file creation
+        if !std::path::Path::new(&self.file_path).exists() {
+            // Create empty vault file
+        }
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl VaultProvider for FileVault {
+    async fn get_secret(&self, path: &str) -> Result<String, GhostError> {
+        // TODO: Implement secret retrieval
+        self.secrets
+            .get(path)
+            .cloned()
+            .ok_or_else(|| GhostError::ConfigError(format!("Secret not found: {}", path)))
+    }
+
+    async fn put_secret(&self, path: &str, value: &str) -> Result<(), GhostError> {
+        // TODO: Implement secret storage
+        let _ = (path, value);
+        Ok(())
+    }
+
+    async fn delete_secret(&self, path: &str) -> Result<(), GhostError> {
+        // TODO: Implement secret deletion
+        let _ = path;
+        Ok(())
+    }
+
+    async fn list_secrets(&self, prefix: &str) -> Result<Vec<String>, GhostError> {
+        // TODO: Implement secret listing
+        Ok(self
+            .secrets
+            .keys()
+            .filter(|k| k.starts_with(prefix))
+            .cloned()
+            .collect())
+    }
+
+    fn provider_name(&self) -> &'static str {
+        "file"
+    }
+
+    fn provider_type(&self) -> VaultProviderType {
+        VaultProviderType::File
     }
 }
 
@@ -106,7 +215,16 @@ impl VaultManager {
     /// Creates a memory vault manager
     pub fn memory() -> Self {
         // TODO: Implement memory vault manager construction
-        Self::new(Box::new(MemoryVault::new()), VaultConfig::default())
+        Self::new(Box::new(MemoryVault::new()), VaultConfig::memory())
+    }
+
+    /// Creates a file vault manager
+    pub fn file(path: impl Into<String>) -> Self {
+        // TODO: Implement file vault manager construction
+        Self::new(
+            Box::new(FileVault::new(path)),
+            VaultConfig::file("vault.json"),
+        )
     }
 
     /// Gets a secret (with caching)
@@ -161,24 +279,22 @@ impl VaultManager {
     pub fn provider_name(&self) -> &'static str {
         self.provider.provider_name()
     }
+
+    /// Returns the provider type
+    pub fn provider_type(&self) -> VaultProviderType {
+        self.provider.provider_type()
+    }
 }
 
-/// Parses a vault reference string
-pub fn parse_vault_reference(reference: &str) -> Option<(VaultProviderType, String)> {
-    // TODO: Implement reference parsing
-    // Format: "vault:provider:path/to/secret"
-    let parts: Vec<&str> = reference.splitn(3, ':').collect();
-    if parts.len() != 3 || parts[0] != "vault" {
-        return None;
+/// Creates a vault provider from configuration
+pub fn create_vault_provider(config: &VaultConfig) -> Result<Box<dyn VaultProvider>, GhostError> {
+    // TODO: Implement vault provider factory
+    match config.provider {
+        VaultProviderType::Memory => Ok(Box::new(MemoryVault::new())),
+        VaultProviderType::File => {
+            let path = config.file_path.as_ref()
+                .ok_or_else(|| GhostError::ConfigError("file_path required for File provider".into()))?;
+            Ok(Box::new(FileVault::new(path)))
+        }
     }
-
-    let provider = match parts[1] {
-        "aws" => VaultProviderType::AwsSecretsManager,
-        "hashicorp" => VaultProviderType::HashiCorpVault,
-        "gcp" => VaultProviderType::GcpSecretManager,
-        "azure" => VaultProviderType::AzureKeyVault,
-        _ => return None,
-    };
-
-    Some((provider, parts[2].to_string()))
 }

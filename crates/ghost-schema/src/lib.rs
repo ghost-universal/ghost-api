@@ -7,12 +7,54 @@ mod types;
 mod error;
 mod capability;
 mod platform;
+mod worker;
+mod config;
+mod event;
+mod fallback;
+mod vault;
+mod bridge;
+mod adapter;
+mod server;
+mod mock;
 
 // Re-export core types
 pub use types::*;
+
+// Re-export error types
 pub use error::*;
+
+// Re-export capability types
 pub use capability::*;
+
+// Re-export platform types
 pub use platform::*;
+
+// Re-export worker types
+pub use worker::*;
+
+// Re-export config types
+pub use config::*;
+
+// Re-export event types
+pub use event::*;
+
+// Re-export fallback types
+pub use fallback::*;
+
+// Re-export vault types
+pub use vault::*;
+
+// Re-export bridge types
+pub use bridge::*;
+
+// Re-export adapter types
+pub use adapter::*;
+
+// Re-export server types
+pub use server::*;
+
+// Re-export mock/testing types
+pub use mock::*;
 
 /// Prelude module with commonly used types
 pub mod prelude {
@@ -26,8 +68,14 @@ pub mod prelude {
         // Platform types
         PlatformConfig, PlatformShield,
         // Config types
-        Strategy, BudgetLimits,
+        Strategy, BudgetLimits, GhostConfig,
         // Session types
         SessionData, SessionType, ProxyConfig, ProxyProtocol,
+        // Worker types
+        WorkerHealth, WorkerStatus, HealthTier,
+        // Vault types
+        VaultProviderType, VaultConfig, ProxyEntry, CredentialEntry,
+        // Bridge types
+        BridgeType, WorkerProtocol,
     };
 }
