@@ -120,7 +120,7 @@ mod capability_tests {
 }
 
 mod fallback_tests {
-    use ghost_schema::{FailureReason, FallbackAction, CapabilityTier};
+    use ghost_schema::{FailureReason, CapabilityTier};
 
     #[test]
     fn test_failure_reason_retryable() {

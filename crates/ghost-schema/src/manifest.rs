@@ -52,7 +52,7 @@ pub struct PolyglotManifest {
     
     /// Health check configuration
     #[serde(default)]
-    pub health: HealthConfig,
+    pub health: ManifestHealthConfig,
     
     /// Rate limit configuration
     #[serde(default)]
@@ -284,9 +284,9 @@ pub struct ConfigField {
     pub description: String,
 }
 
-/// Health check configuration
+/// Health check configuration for polyglot manifests
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HealthConfig {
+pub struct ManifestHealthConfig {
     /// Interval between health checks in milliseconds
     #[serde(default = "default_check_interval")]
     pub check_interval_ms: u64,
@@ -315,7 +315,7 @@ fn default_health_metrics() -> HealthMetrics {
     }
 }
 
-impl Default for HealthConfig {
+impl Default for ManifestHealthConfig {
     fn default() -> Self {
         Self {
             check_interval_ms: default_check_interval(),

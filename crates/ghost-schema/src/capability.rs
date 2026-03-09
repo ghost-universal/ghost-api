@@ -4,7 +4,6 @@
 //! the tier system for capability classification.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use crate::{GhostError, Platform};
 
@@ -279,12 +278,12 @@ pub enum WorkerType {
 
 impl WorkerType {
     /// Returns the bridge type needed for this worker
-    pub fn bridge_type(&self) -> Option<BridgeType> {
+    pub fn bridge_type(&self) -> Option<crate::BridgeType> {
         // TODO: Implement bridge type determination
         match self {
-            WorkerType::NodeJs => Some(BridgeType::Napi),
-            WorkerType::Python => Some(BridgeType::PyO3),
-            WorkerType::Go => Some(BridgeType::Grpc),
+            WorkerType::NodeJs => Some(crate::BridgeType::Napi),
+            WorkerType::Python => Some(crate::BridgeType::PyO3),
+            WorkerType::Go => Some(crate::BridgeType::Grpc),
             WorkerType::Rust => None, // Native, no bridge needed
             WorkerType::Official => None,
             WorkerType::Mock => None,
@@ -296,41 +295,5 @@ impl WorkerType {
     pub fn is_browser_based(&self) -> bool {
         // TODO: Implement browser detection
         matches!(self, WorkerType::NodeJs | WorkerType::Python)
-    }
-}
-
-/// Type of FFI bridge
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum BridgeType {
-    /// NAPI (Node.js)
-    Napi,
-    /// PyO3 (Python)
-    PyO3,
-    /// gRPC (Go and others)
-    Grpc,
-    /// Unix Domain Socket
-    Uds,
-}
-
-impl BridgeType {
-    /// Returns whether this bridge requires external runtime
-    pub fn requires_runtime(&self) -> bool {
-        // TODO: Implement runtime requirement check
-        matches!(
-            self,
-            BridgeType::PyO3 | BridgeType::Napi | BridgeType::Grpc
-        )
-    }
-
-    /// Returns the runtime name
-    pub fn runtime_name(&self) -> &'static str {
-        // TODO: Implement runtime name
-        match self {
-            BridgeType::PyO3 => "python",
-            BridgeType::Napi => "node",
-            BridgeType::Grpc => "go",
-            BridgeType::Uds => "uds",
-        }
     }
 }

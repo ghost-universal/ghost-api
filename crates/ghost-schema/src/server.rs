@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::{GhostContext, GhostPost, GhostUser, Platform, Strategy};
+use crate::{GhostContext, GhostPost, Strategy};
 
 // ============================================================================
 // Server Configuration

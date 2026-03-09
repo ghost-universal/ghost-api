@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::{Platform, Capability};
+use crate::Platform;
 
 // ============================================================================
 // Post Types
@@ -74,7 +74,7 @@ impl GhostPost {
     }
 
     /// Converts the post to a platform-specific format
-    pub fn to_platform_format(&self, target: Platform) -> Result<serde_json::Value, crate::GhostError> {
+    pub fn to_platform_format(&self, _target: Platform) -> Result<serde_json::Value, crate::GhostError> {
         // TODO: Implement platform-specific serialization
         Err(crate::GhostError::NotImplemented("to_platform_format".into()))
     }

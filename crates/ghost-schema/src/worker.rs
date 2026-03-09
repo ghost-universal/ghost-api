@@ -157,7 +157,7 @@ impl WorkerStats {
     }
 
     /// Records a request result
-    pub fn record(&mut self, success: bool, latency_ms: u64) {
+    pub fn record(&mut self, success: bool, _latency_ms: u64) {
         // TODO: Implement stats recording
         self.total_requests += 1;
         if success {

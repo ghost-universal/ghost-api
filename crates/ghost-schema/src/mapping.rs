@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// Parse X (Twitter) ISO 8601 timestamp to Unix timestamp
 ///
 /// X API format: "2024-01-15T10:30:00.000Z"
-pub fn parse_x_timestamp(ts: &str) -> GhostResult<i64> {
+pub fn parse_x_timestamp(_ts: &str) -> GhostResult<i64> {
     // TODO: Implement X timestamp parsing
     // - Parse ISO 8601 format with milliseconds
     // - Handle timezone (Z suffix)
@@ -24,7 +24,7 @@ pub fn parse_x_timestamp(ts: &str) -> GhostResult<i64> {
 /// Parse Threads timestamp to Unix timestamp
 ///
 /// Threads format: "2024-01-15T10:30:00+0000"
-pub fn parse_threads_timestamp(ts: &str) -> GhostResult<i64> {
+pub fn parse_threads_timestamp(_ts: &str) -> GhostResult<i64> {
     // TODO: Implement Threads timestamp parsing
     // - Parse non-standard ISO format with timezone offset
     // - Handle +0000 suffix instead of Z
@@ -35,7 +35,7 @@ pub fn parse_threads_timestamp(ts: &str) -> GhostResult<i64> {
 /// Generic ISO 8601 timestamp parser
 ///
 /// Attempts multiple common formats for flexibility
-pub fn parse_iso8601(ts: &str) -> GhostResult<i64> {
+pub fn parse_iso8601(_ts: &str) -> GhostResult<i64> {
     // TODO: Implement generic ISO 8601 parsing
     // - Try multiple format variations:
     //   - "%Y-%m-%dT%H:%M:%S%.3fZ"
@@ -48,7 +48,7 @@ pub fn parse_iso8601(ts: &str) -> GhostResult<i64> {
 }
 
 /// Convert Unix timestamp to ISO 8601 string
-pub fn unix_to_iso8601(unix: i64) -> String {
+pub fn unix_to_iso8601(_unix: i64) -> String {
     // TODO: Implement Unix to ISO 8601 conversion
     // - Convert Unix timestamp to DateTime<Utc>
     // - Format as ISO 8601 with Z suffix
@@ -56,7 +56,7 @@ pub fn unix_to_iso8601(unix: i64) -> String {
 }
 
 /// Convert Unix timestamp to Threads format
-pub fn unix_to_threads_timestamp(unix: i64) -> String {
+pub fn unix_to_threads_timestamp(_unix: i64) -> String {
     // TODO: Implement Unix to Threads timestamp conversion
     // - Convert Unix timestamp to DateTime<Utc>
     // - Format with +0000 timezone suffix
@@ -375,7 +375,7 @@ pub fn format_duration(secs: f64) -> String {
 // ============================================================================
 
 /// Extract hashtags from text
-pub fn extract_hashtags(text: &str) -> Vec<String> {
+pub fn extract_hashtags(_text: &str) -> Vec<String> {
     // TODO: Implement hashtag extraction
     // - Find all #hashtag patterns
     // - Validate hashtag format (alphanumeric + underscore)
@@ -384,7 +384,7 @@ pub fn extract_hashtags(text: &str) -> Vec<String> {
 }
 
 /// Extract mentions from text
-pub fn extract_mentions(text: &str) -> Vec<String> {
+pub fn extract_mentions(_text: &str) -> Vec<String> {
     // TODO: Implement mention extraction
     // - Find all @username patterns
     // - Validate username format
@@ -393,7 +393,7 @@ pub fn extract_mentions(text: &str) -> Vec<String> {
 }
 
 /// Extract URLs from text
-pub fn extract_urls(text: &str) -> Vec<String> {
+pub fn extract_urls(_text: &str) -> Vec<String> {
     // TODO: Implement URL extraction
     // - Find all http(s):// patterns
     // - Handle t.co shortened URLs specially

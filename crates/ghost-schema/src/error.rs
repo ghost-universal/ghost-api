@@ -3,7 +3,7 @@
 use thiserror::Error;
 
 /// Main error type for ghost-api
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 pub enum GhostError {
     /// The requested feature is not yet implemented
     #[error("Not implemented: {0}")]
@@ -18,7 +18,7 @@ pub enum GhostError {
     NetworkError(String),
 
     /// Platform returned an error response
-    #[error("Platform error: {0}")]
+    #[error("Platform error ({}): {message}", code)]
     PlatformError {
         code: u16,
         message: String,
@@ -26,7 +26,7 @@ pub enum GhostError {
     },
 
     /// Rate limit exceeded
-    #[error("Rate limited: {0}")]
+    #[error("Rate limited on {platform:?}, retry after: {retry_after:?}s")]
     RateLimited {
         retry_after: Option<u64>,
         platform: crate::Platform,
@@ -41,7 +41,7 @@ pub enum GhostError {
     SessionExpired(String),
 
     /// Account suspended or banned
-    #[error("Account suspended: {0}")]
+    #[error("Account {account_id} suspended on {platform:?}: {reason:?}")]
     AccountSuspended {
         account_id: String,
         platform: crate::Platform,
@@ -92,23 +92,35 @@ pub enum GhostError {
     Timeout(String),
 
     /// WAF/Challenge detected
-    #[error("WAF challenge detected: {0}")]
+    #[error("WAF challenge ({challenge_type}) detected on {platform:?}")]
     WafChallenge {
         challenge_type: String,
         platform: crate::Platform,
     },
 
-    /// IO error
+    /// IO error (stores the error message)
     #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
+    IoError(String),
 
-    /// JSON error
+    /// JSON error (stores the error message)
     #[error("JSON error: {0}")]
-    JsonError(#[from] serde_json::Error),
+    JsonError(String),
 
     /// Generic error with message
     #[error("{0}")]
     Other(String),
+}
+
+impl From<std::io::Error> for GhostError {
+    fn from(err: std::io::Error) -> Self {
+        GhostError::IoError(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for GhostError {
+    fn from(err: serde_json::Error) -> Self {
+        GhostError::JsonError(err.to_string())
+    }
 }
 
 impl GhostError {

@@ -462,7 +462,7 @@ impl Cassette {
     }
 
     /// Saves the cassette to file
-    pub fn save(&self, path: &str) -> Result<(), GhostError> {
+    pub fn save(&self, _path: &str) -> Result<(), GhostError> {
         // TODO: Implement cassette saving
         let _json = serde_json::to_string_pretty(self)
             .map_err(|e| GhostError::ParseError(e.to_string()))?;

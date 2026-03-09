@@ -13,7 +13,6 @@ mod event;
 mod fallback;
 mod vault;
 mod bridge;
-mod adapter;
 mod server;
 mod mock;
 mod mapping;
@@ -49,9 +48,6 @@ pub use vault::*;
 
 // Re-export bridge types
 pub use bridge::*;
-
-// Re-export adapter types
-pub use adapter::*;
 
 // Re-export server types
 pub use server::*;

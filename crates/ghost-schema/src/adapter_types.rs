@@ -4,9 +4,7 @@
 //! and transforming platform-specific data into unified Ghost types.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-use crate::{Platform, MediaType, GhostError};
+use crate::{Platform, GhostError};
 
 // ============================================================================
 // Common Adapter Types

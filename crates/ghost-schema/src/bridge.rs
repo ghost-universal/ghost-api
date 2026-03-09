@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{CapabilityTier, GhostError, PayloadBlob, PayloadContentType, RawContext};
+use crate::{GhostError, PayloadBlob, RawContext};
 
 // ============================================================================
 // Bridge Types

@@ -11,3 +11,4 @@ description = "Unified Social AST (Abstract Syntax Tree) for ghost-api"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+chrono = { workspace = true }
