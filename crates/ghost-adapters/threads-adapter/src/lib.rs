@@ -29,8 +29,8 @@ pub use ghost_schema::{
 
 // Re-export scraper parser
 pub use scraper_parser::{
-    ScraperParser, ScraperPost, ScraperOutput,
-    parse_scraper_output, parse_scraper_blob,
+    ScraperParser, ScraperPost, ScraperOutput, WorkerResponse,
+    parse_scraper_output, parse_scraper_blob, parse_worker_json,
 };
 
 /// Parse Threads platform data into unified types
