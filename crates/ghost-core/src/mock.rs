@@ -8,7 +8,7 @@ use ghost_schema::{
     Capability, CapabilityManifest, GhostError, PayloadBlob, PayloadContentType,
     Platform, RawContext, WorkerHealth, WorkerStatus, WorkerType,
 };
-use ghost_core::GhostWorker;
+use crate::GhostWorker;
 
 /// Mock worker for testing
 pub struct MockWorker {
@@ -24,6 +24,10 @@ pub struct MockWorker {
     should_fail: bool,
     /// Simulated latency in ms
     latency_ms: u64,
+    /// Worker type
+    worker_type: WorkerType,
+    /// Priority
+    priority: u32,
 }
 
 /// Response type for mock worker
@@ -42,7 +46,6 @@ pub enum MockResponse {
 impl MockWorker {
     /// Creates a new mock worker
     pub fn new(id: impl Into<String>) -> Self {
-        // TODO: Implement mock worker construction
         Self {
             id: id.into(),
             capabilities: vec![Capability::XRead, Capability::ThreadsRead],
@@ -53,18 +56,18 @@ impl MockWorker {
             )),
             should_fail: false,
             latency_ms: 0,
+            worker_type: WorkerType::Mock,
+            priority: 50,
         }
     }
 
     /// Creates a mock worker that always succeeds
     pub fn always_success() -> Self {
-        // TODO: Implement always-success worker
         Self::new("mock-success")
     }
 
     /// Creates a mock worker that always fails
     pub fn always_failure() -> Self {
-        // TODO: Implement always-failure worker
         let mut worker = Self::new("mock-failure");
         worker.should_fail = true;
         worker.response = MockResponse::Failure(GhostError::ScraperError {
@@ -76,37 +79,60 @@ impl MockWorker {
 
     /// Creates a mock worker that returns rate limited
     pub fn rate_limited(retry_after: u64) -> Self {
-        // TODO: Implement rate-limited worker
         let mut worker = Self::new("mock-rate-limited");
         worker.response = MockResponse::RateLimited { retry_after };
         worker
     }
 
+    /// Creates a mock worker that times out
+    pub fn timeout() -> Self {
+        let mut worker = Self::new("mock-timeout");
+        worker.response = MockResponse::Timeout;
+        worker
+    }
+
     /// Sets the capabilities
     pub fn with_capabilities(mut self, capabilities: Vec<Capability>) -> Self {
-        // TODO: Implement capabilities setter
         self.capabilities = capabilities;
         self
     }
 
     /// Sets the platforms
     pub fn with_platforms(mut self, platforms: Vec<Platform>) -> Self {
-        // TODO: Implement platforms setter
         self.platforms = platforms;
         self
     }
 
     /// Sets the response
     pub fn with_response(mut self, response: MockResponse) -> Self {
-        // TODO: Implement response setter
         self.response = response;
         self
     }
 
     /// Sets the simulated latency
     pub fn with_latency(mut self, latency_ms: u64) -> Self {
-        // TODO: Implement latency setter
         self.latency_ms = latency_ms;
+        self
+    }
+
+    /// Sets the worker type
+    pub fn with_worker_type(mut self, worker_type: WorkerType) -> Self {
+        self.worker_type = worker_type;
+        self
+    }
+
+    /// Sets the priority
+    pub fn with_priority(mut self, priority: u32) -> Self {
+        self.priority = priority;
+        self
+    }
+
+    /// Sets a success JSON response
+    pub fn with_success_json(mut self, json: impl Into<String>) -> Self {
+        self.response = MockResponse::Success(PayloadBlob::new(
+            json.into().into_bytes(),
+            PayloadContentType::Json,
+        ));
         self
     }
 }
@@ -126,7 +152,6 @@ impl GhostWorker for MockWorker {
     }
 
     async fn execute(&self, _ctx: &RawContext) -> Result<PayloadBlob, GhostError> {
-        // TODO: Implement mock execution
         // Simulate latency
         if self.latency_ms > 0 {
             tokio::time::sleep(tokio::time::Duration::from_millis(self.latency_ms)).await;
@@ -144,12 +169,19 @@ impl GhostWorker for MockWorker {
     }
 
     fn manifest(&self) -> CapabilityManifest {
-        // TODO: Implement manifest generation
-        CapabilityManifest::new(&self.id, self.capabilities.clone())
+        CapabilityManifest {
+            worker_id: self.id.clone(),
+            version: "0.1.0".to_string(),
+            capabilities: self.capabilities.clone(),
+            worker_type: self.worker_type,
+            max_concurrent: 5,
+            health_threshold: 0.7,
+            priority: self.priority,
+            tags: vec!["mock".to_string()],
+        }
     }
 
     async fn health_check(&self) -> Result<WorkerHealth, GhostError> {
-        // TODO: Implement health check
         Ok(WorkerHealth::new())
     }
 
@@ -160,6 +192,14 @@ impl GhostWorker for MockWorker {
     fn load(&self) -> f64 {
         0.0
     }
+
+    fn worker_type(&self) -> WorkerType {
+        self.worker_type
+    }
+
+    fn priority(&self) -> u32 {
+        self.priority
+    }
 }
 
 /// Builder for creating mock workers with specific behaviors
@@ -169,12 +209,13 @@ pub struct MockWorkerBuilder {
     platforms: Vec<Platform>,
     response: MockResponse,
     latency_ms: u64,
+    worker_type: WorkerType,
+    priority: u32,
 }
 
 impl MockWorkerBuilder {
     /// Creates a new builder
     pub fn new(id: impl Into<String>) -> Self {
-        // TODO: Implement builder construction
         Self {
             id: id.into(),
             capabilities: vec![Capability::XRead],
@@ -184,26 +225,37 @@ impl MockWorkerBuilder {
                 PayloadContentType::Json,
             )),
             latency_ms: 0,
+            worker_type: WorkerType::Mock,
+            priority: 50,
         }
     }
 
     /// Adds a capability
     pub fn capability(mut self, cap: Capability) -> Self {
-        // TODO: Implement capability addition
         self.capabilities.push(cap);
+        self
+    }
+
+    /// Sets all capabilities
+    pub fn capabilities(mut self, capabilities: Vec<Capability>) -> Self {
+        self.capabilities = capabilities;
         self
     }
 
     /// Adds a platform
     pub fn platform(mut self, platform: Platform) -> Self {
-        // TODO: Implement platform addition
         self.platforms.push(platform);
+        self
+    }
+
+    /// Sets all platforms
+    pub fn platforms(mut self, platforms: Vec<Platform>) -> Self {
+        self.platforms = platforms;
         self
     }
 
     /// Sets success response with JSON
     pub fn success_json(mut self, json: impl Into<String>) -> Self {
-        // TODO: Implement success JSON setter
         self.response = MockResponse::Success(PayloadBlob::new(
             json.into().into_bytes(),
             PayloadContentType::Json,
@@ -211,9 +263,14 @@ impl MockWorkerBuilder {
         self
     }
 
+    /// Sets success response with payload
+    pub fn success_payload(mut self, payload: PayloadBlob) -> Self {
+        self.response = MockResponse::Success(payload);
+        self
+    }
+
     /// Sets failure response
     pub fn failure(mut self, message: impl Into<String>) -> Self {
-        // TODO: Implement failure setter
         self.response = MockResponse::Failure(GhostError::ScraperError {
             worker: self.id.clone(),
             message: message.into(),
@@ -221,23 +278,44 @@ impl MockWorkerBuilder {
         self
     }
 
+    /// Sets failure with specific error
+    pub fn failure_error(mut self, error: GhostError) -> Self {
+        self.response = MockResponse::Failure(error);
+        self
+    }
+
     /// Sets rate limited response
     pub fn rate_limited(mut self, retry_after: u64) -> Self {
-        // TODO: Implement rate limited setter
         self.response = MockResponse::RateLimited { retry_after };
+        self
+    }
+
+    /// Sets timeout response
+    pub fn timeout(mut self) -> Self {
+        self.response = MockResponse::Timeout;
         self
     }
 
     /// Sets simulated latency
     pub fn latency(mut self, ms: u64) -> Self {
-        // TODO: Implement latency setter
         self.latency_ms = ms;
+        self
+    }
+
+    /// Sets the worker type
+    pub fn worker_type(mut self, worker_type: WorkerType) -> Self {
+        self.worker_type = worker_type;
+        self
+    }
+
+    /// Sets the priority
+    pub fn priority(mut self, priority: u32) -> Self {
+        self.priority = priority;
         self
     }
 
     /// Builds the mock worker
     pub fn build(self) -> MockWorker {
-        // TODO: Implement mock worker building
         MockWorker {
             id: self.id,
             capabilities: self.capabilities,
@@ -245,6 +323,8 @@ impl MockWorkerBuilder {
             response: self.response,
             should_fail: false,
             latency_ms: self.latency_ms,
+            worker_type: self.worker_type,
+            priority: self.priority,
         }
     }
 }
@@ -255,7 +335,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_worker_success() {
-        // TODO: Implement mock worker success test
         let worker = MockWorker::always_success();
         let ctx = RawContext::get("https://example.com");
         let result = worker.execute(&ctx).await;
@@ -264,7 +343,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_worker_failure() {
-        // TODO: Implement mock worker failure test
         let worker = MockWorker::always_failure();
         let ctx = RawContext::get("https://example.com");
         let result = worker.execute(&ctx).await;
@@ -273,25 +351,66 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_worker_rate_limited() {
-        // TODO: Implement mock worker rate limited test
         let worker = MockWorker::rate_limited(60);
         let ctx = RawContext::get("https://example.com");
         let result = worker.execute(&ctx).await;
         assert!(matches!(result, Err(GhostError::RateLimited { .. })));
     }
 
+    #[tokio::test]
+    async fn test_mock_worker_timeout() {
+        let worker = MockWorker::timeout();
+        let ctx = RawContext::get("https://example.com");
+        let result = worker.execute(&ctx).await;
+        assert!(matches!(result, Err(GhostError::Timeout(_))));
+    }
+
     #[test]
     fn test_mock_worker_builder() {
-        // TODO: Implement mock worker builder test
         let worker = MockWorkerBuilder::new("test-worker")
             .capability(Capability::XSearch)
             .platform(Platform::Threads)
             .success_json(r#"{"test": true}"#)
             .latency(100)
+            .priority(75)
             .build();
 
         assert_eq!(worker.id(), "test-worker");
         assert!(worker.capabilities().contains(&Capability::XSearch));
+        assert!(worker.capabilities().contains(&Capability::XRead)); // Default
         assert!(worker.platforms().contains(&Platform::Threads));
+        assert_eq!(worker.priority(), 75);
+    }
+
+    #[test]
+    fn test_mock_worker_manifest() {
+        let worker = MockWorker::always_success();
+        let manifest = worker.manifest();
+
+        assert_eq!(manifest.worker_id, "mock-success");
+        assert!(manifest.capabilities.contains(&Capability::XRead));
+        assert_eq!(manifest.worker_type, WorkerType::Mock);
+    }
+
+    #[tokio::test]
+    async fn test_mock_worker_health_check() {
+        let worker = MockWorker::always_success();
+        let health = worker.health_check().await;
+        assert!(health.is_ok());
+        assert_eq!(health.unwrap().score, 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_mock_worker_with_latency() {
+        let worker = MockWorkerBuilder::new("slow-worker")
+            .latency(50)
+            .build();
+
+        let ctx = RawContext::get("https://example.com");
+        let start = std::time::Instant::now();
+        let _ = worker.execute(&ctx).await;
+        let elapsed = start.elapsed();
+
+        assert!(elapsed.as_millis() >= 50);
     }
 }
