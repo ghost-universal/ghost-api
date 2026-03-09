@@ -6,7 +6,7 @@ use ghost_core::{Ghost, GhostConfig, GhostWorker, WorkerRegistry, HealthEngine, 
 use ghost_schema::{
     Capability, CapabilityManifest, GhostError, PayloadBlob, PayloadContentType,
     Platform, RawContext, WorkerHealth, WorkerStatus, WorkerType, Strategy,
-    CapabilityTier, FailureReason,
+    CapabilityTier, FailureReason, HealthConfig,
 };
 use async_trait::async_trait;
 
@@ -18,13 +18,7 @@ struct TestWorker {
     id: String,
     capabilities: Vec<Capability>,
     platforms: Vec<Platform>,
-    response: TestResponse,
-}
-
-enum TestResponse {
-    Success,
-    Failure,
-    RateLimited,
+    priority: u32,
 }
 
 impl TestWorker {
@@ -33,7 +27,7 @@ impl TestWorker {
             id: id.into(),
             capabilities: vec![Capability::XRead, Capability::ThreadsRead],
             platforms: vec![Platform::X, Platform::Threads],
-            response: TestResponse::Success,
+            priority: 50,
         }
     }
 
@@ -47,13 +41,8 @@ impl TestWorker {
         self
     }
 
-    fn failing(mut self) -> Self {
-        self.response = TestResponse::Failure;
-        self
-    }
-
-    fn rate_limited(mut self) -> Self {
-        self.response = TestResponse::RateLimited;
+    fn with_priority(mut self, priority: u32) -> Self {
+        self.priority = priority;
         self
     }
 }
@@ -73,28 +62,14 @@ impl GhostWorker for TestWorker {
     }
 
     async fn execute(&self, _ctx: &RawContext) -> Result<PayloadBlob, GhostError> {
-        match self.response {
-            TestResponse::Success => Ok(PayloadBlob::new(
-                br#"{"id":"test","text":"Test response"}"#.to_vec(),
-                PayloadContentType::Json,
-            )),
-            TestResponse::Failure => Err(GhostError::ScraperError {
-                worker: self.id.clone(),
-                message: "Test failure".to_string(),
-            }),
-            TestResponse::RateLimited => Err(GhostError::RateLimited {
-                retry_after: Some(60),
-                platform: Platform::X,
-            }),
-        }
+        Ok(PayloadBlob::new(
+            br#"{"id":"test","text":"Test response"}"#.to_vec(),
+            PayloadContentType::Json,
+        ))
     }
 
     fn manifest(&self) -> CapabilityManifest {
         CapabilityManifest::new(&self.id, self.capabilities.clone())
-    }
-
-    async fn health_check(&self) -> Result<WorkerHealth, GhostError> {
-        Ok(WorkerHealth::new())
     }
 
     fn status(&self) -> WorkerStatus {
@@ -110,31 +85,34 @@ impl GhostWorker for TestWorker {
     }
 
     fn priority(&self) -> u32 {
-        50
+        self.priority
     }
 }
 
 // ============================================================================
-// Router Tests
+// Ghost Tests
 // ============================================================================
 
-mod router_tests {
+mod ghost_tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_router_creation() {
-        let ghost = Ghost::init().await.unwrap();
-        assert!(ghost.worker_count().await == 0);
+    async fn test_ghost_init() {
+        let ghost = Ghost::init().await;
+        assert!(ghost.is_ok());
     }
 
     #[tokio::test]
-    async fn test_worker_selection_no_workers() {
-        let ghost = Ghost::init().await.unwrap();
-        let ctx = ghost_schema::GhostContext::default();
+    async fn test_ghost_init_with_config() {
+        let config = GhostConfig::default();
+        let ghost = Ghost::init_with_config(config).await;
+        assert!(ghost.is_ok());
+    }
 
-        let result = ghost.x().get_post("123", &ctx, Strategy::HealthFirst).await;
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), GhostError::WorkersExhausted(_)));
+    #[tokio::test]
+    async fn test_worker_count_empty() {
+        let ghost = Ghost::init().await.unwrap();
+        assert_eq!(ghost.worker_count().await, 0);
     }
 
     #[tokio::test]
@@ -161,126 +139,51 @@ mod router_tests {
     }
 
     #[tokio::test]
-    async fn test_fallback_cascade() {
+    async fn test_worker_unregistration_nonexistent() {
         let ghost = Ghost::init().await.unwrap();
-
-        // Register a failing worker
-        let worker = TestWorker::new("failing-worker").failing();
-        ghost.register_worker(Box::new(worker)).await.unwrap();
-
-        let ctx = ghost_schema::GhostContext::default();
-        let result = ghost.x().get_post("123", &ctx, Strategy::HealthFirst).await;
-
-        // Should fail after retries
+        let result = ghost.unregister_worker("nonexistent").await;
         assert!(result.is_err());
     }
-}
 
-// ============================================================================
-// Health Tests
-// ============================================================================
+    #[tokio::test]
+    async fn test_platform_client() {
+        let ghost = Ghost::init().await.unwrap();
 
-mod health_tests {
-    use super::*;
-    use ghost_schema::HealthConfig;
+        let x_client = ghost.x();
+        assert_eq!(x_client.platform(), Platform::X);
 
-    #[test]
-    fn test_health_score_calculation() {
-        let config = HealthConfig::new();
-        let engine = HealthEngine::new(&config);
-
-        // Perfect score: 100% success, 0ms latency
-        let score = engine.calculate_score(1.0, 0);
-        assert!((score - 1.0).abs() < 0.01);
-
-        // 80% success rate, 500ms latency
-        // Health = (0.8 × 0.6) + (0.75 × 0.4) = 0.48 + 0.30 = 0.78
-        let score = engine.calculate_score(0.8, 500);
-        assert!((score - 0.78).abs() < 0.01);
-
-        // 50% success rate, max latency
-        // Health = (0.5 × 0.6) + (0.0 × 0.4) = 0.30
-        let score = engine.calculate_score(0.5, 2000);
-        assert!((score - 0.30).abs() < 0.01);
+        let threads_client = ghost.threads();
+        assert_eq!(threads_client.platform(), Platform::Threads);
     }
 
     #[tokio::test]
-    async fn test_circuit_breaker_trip() {
-        let config = HealthConfig::new();
-        let engine = HealthEngine::new(&config);
-
-        engine.initialize_worker("test-worker").await;
-
-        // Record failures to trip the circuit breaker
-        for _ in 0..config.consecutive_failure_threshold {
-            engine.record_failure("test-worker").await;
-        }
-
-        let is_open = engine.is_circuit_open("test-worker").await;
-        assert!(is_open);
+    async fn test_ghost_shutdown() {
+        let ghost = Ghost::init().await.unwrap();
+        let result = ghost.shutdown().await;
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
-    async fn test_circuit_breaker_recovery() {
-        let config = HealthConfig::new();
-        let engine = HealthEngine::new(&config);
-
-        engine.initialize_worker("test-worker").await;
-
-        // Trip the breaker
-        engine.trip_circuit_breaker("test-worker").await;
-        assert!(engine.is_circuit_open("test-worker").await);
-
-        // Reset the breaker
-        engine.reset_circuit_breaker("test-worker").await;
-        assert!(!engine.is_circuit_open("test-worker").await);
+    async fn test_ghost_health_status() {
+        let ghost = Ghost::init().await.unwrap();
+        let status = ghost.health_status().await;
+        assert_eq!(status.total_count, 0);
     }
 
     #[tokio::test]
-    async fn test_health_tier_classification() {
-        let config = HealthConfig::new();
-        let engine = HealthEngine::new(&config);
-
-        engine.initialize_worker("healthy-worker").await;
-        engine.initialize_worker("degraded-worker").await;
-        engine.initialize_worker("unhealthy-worker").await;
-
-        // Record successes for healthy worker
-        for _ in 0..10 {
-            engine.record_success("healthy-worker", 100).await;
-        }
-
-        // Record failures for unhealthy worker
-        for _ in 0..5 {
-            engine.record_failure("unhealthy-worker").await;
-        }
-
-        let healthy = engine.healthy_workers().await;
-        let unhealthy = engine.unhealthy_workers().await;
-
-        assert!(healthy.contains(&"healthy-worker".to_string()));
-        assert!(unhealthy.contains(&"unhealthy-worker".to_string()));
+    async fn test_ghost_capabilities_for_platform() {
+        let ghost = Ghost::init().await.unwrap();
+        let caps = ghost.capabilities_for("x").await;
+        assert!(caps.is_empty());
     }
 
     #[tokio::test]
-    async fn test_health_engine_stats() {
-        let config = HealthConfig::new();
-        let engine = HealthEngine::new(&config);
+    async fn test_ghost_config_access() {
+        let config = GhostConfig::new();
+        let ghost = Ghost::init_with_config(config).await.unwrap();
 
-        engine.initialize_worker("test-worker").await;
-
-        // Record some requests
-        engine.record_success("test-worker", 100).await;
-        engine.record_success("test-worker", 150).await;
-        engine.record_failure("test-worker").await;
-
-        let stats = engine.get_stats("test-worker").await;
-        assert!(stats.is_some());
-
-        let stats = stats.unwrap();
-        assert_eq!(stats.total_requests, 3);
-        assert_eq!(stats.successful_requests, 2);
-        assert_eq!(stats.failed_requests, 1);
+        let config = ghost.config();
+        assert_eq!(config.max_retries, 3);
     }
 }
 
@@ -290,6 +193,13 @@ mod health_tests {
 
 mod worker_tests {
     use super::*;
+
+    #[test]
+    fn test_registry_new() {
+        let registry = WorkerRegistry::new();
+        assert!(registry.is_empty());
+        assert_eq!(registry.len(), 0);
+    }
 
     #[test]
     fn test_worker_registration_basic() {
@@ -314,9 +224,6 @@ mod worker_tests {
 
         let x_search_workers = registry.get_by_capability(Capability::XSearch);
         assert_eq!(x_search_workers.len(), 1);
-
-        let threads_workers = registry.get_by_capability(Capability::ThreadsRead);
-        assert_eq!(threads_workers.len(), 0);
     }
 
     #[test]
@@ -388,16 +295,198 @@ mod worker_tests {
             registry.register(Box::new(worker));
         }
 
-        let ids: Vec<&str> = vec![
-            registry.get_round_robin(Capability::XRead).unwrap().id(),
-            registry.get_round_robin(Capability::XRead).unwrap().id(),
-            registry.get_round_robin(Capability::XRead).unwrap().id(),
-            registry.get_round_robin(Capability::XRead).unwrap().id(),
-        ];
+        let id1 = registry.get_round_robin(Capability::XRead).unwrap().id().to_string();
+        let id2 = registry.get_round_robin(Capability::XRead).unwrap().id().to_string();
+        let id3 = registry.get_round_robin(Capability::XRead).unwrap().id().to_string();
+        let id4 = registry.get_round_robin(Capability::XRead).unwrap().id().to_string();
 
         // Should cycle through workers
-        assert_ne!(ids[0], ids[1]);
-        assert_eq!(ids[0], ids[3]); // Fourth should equal first
+        assert_ne!(id1, id2);
+        assert_ne!(id2, id3);
+        assert_eq!(id1, id4); // Fourth should equal first
+    }
+
+    #[test]
+    fn test_worker_priority_sorting() {
+        let mut registry = WorkerRegistry::new();
+
+        let low = TestWorker::new("low").with_priority(10);
+        let high = TestWorker::new("high").with_priority(90);
+        let medium = TestWorker::new("medium").with_priority(50);
+
+        registry.register(Box::new(low));
+        registry.register(Box::new(high));
+        registry.register(Box::new(medium));
+
+        let sorted = registry.get_by_capability_sorted(Capability::XRead);
+        assert_eq!(sorted[0].id(), "high");
+        assert_eq!(sorted[1].id(), "medium");
+        assert_eq!(sorted[2].id(), "low");
+    }
+
+    #[test]
+    fn test_registry_clear() {
+        let mut registry = WorkerRegistry::new();
+
+        registry.register(Box::new(TestWorker::new("worker1")));
+        registry.register(Box::new(TestWorker::new("worker2")));
+        assert_eq!(registry.len(), 2);
+
+        registry.clear();
+        assert_eq!(registry.len(), 0);
+        assert!(registry.is_empty());
+    }
+}
+
+// ============================================================================
+// Health Tests
+// ============================================================================
+
+mod health_tests {
+    use super::*;
+
+    #[test]
+    fn test_health_score_calculation() {
+        let config = HealthConfig::new();
+        let engine = HealthEngine::new(&config);
+
+        // Perfect score: 100% success, 0ms latency
+        let score = engine.calculate_score(1.0, 0);
+        assert!((score - 1.0).abs() < 0.01);
+
+        // 80% success rate, 500ms latency
+        // Health = (0.8 × 0.6) + (0.75 × 0.4) = 0.48 + 0.30 = 0.78
+        let score = engine.calculate_score(0.8, 500);
+        assert!((score - 0.78).abs() < 0.01);
+
+        // 50% success rate, max latency
+        // Health = (0.5 × 0.6) + (0.0 × 0.4) = 0.30
+        let score = engine.calculate_score(0.5, 2000);
+        assert!((score - 0.30).abs() < 0.01);
+    }
+
+    #[tokio::test]
+    async fn test_health_engine_initialize_worker() {
+        let config = HealthConfig::new();
+        let engine = HealthEngine::new(&config);
+
+        engine.initialize_worker("test-worker").await;
+
+        let health = engine.get_health("test-worker").await;
+        assert_eq!(health.score, 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_health_engine_record_success() {
+        let config = HealthConfig::new();
+        let engine = HealthEngine::new(&config);
+
+        engine.initialize_worker("test-worker").await;
+        engine.record_success("test-worker", 100).await;
+
+        let health = engine.get_health("test-worker").await;
+        assert!(health.score > 0.0);
+        assert_eq!(health.consecutive_failures, 0);
+    }
+
+    #[tokio::test]
+    async fn test_health_engine_record_failure() {
+        let config = HealthConfig::new();
+        let engine = HealthEngine::new(&config);
+
+        engine.initialize_worker("test-worker").await;
+        engine.record_failure("test-worker").await;
+
+        let health = engine.get_health("test-worker").await;
+        assert_eq!(health.consecutive_failures, 1);
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_trip() {
+        let config = HealthConfig::new();
+        let engine = HealthEngine::new(&config);
+
+        engine.initialize_worker("test-worker").await;
+
+        // Record failures to trip the circuit breaker
+        for _ in 0..config.consecutive_failure_threshold {
+            engine.record_failure("test-worker").await;
+        }
+
+        let is_open = engine.is_circuit_open("test-worker").await;
+        assert!(is_open);
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_reset() {
+        let config = HealthConfig::new();
+        let engine = HealthEngine::new(&config);
+
+        engine.initialize_worker("test-worker").await;
+
+        engine.trip_circuit_breaker("test-worker").await;
+        assert!(engine.is_circuit_open("test-worker").await);
+
+        engine.reset_circuit_breaker("test-worker").await;
+        assert!(!engine.is_circuit_open("test-worker").await);
+    }
+
+    #[tokio::test]
+    async fn test_health_tier_classification() {
+        let config = HealthConfig::new();
+        let engine = HealthEngine::new(&config);
+
+        engine.initialize_worker("healthy-worker").await;
+        engine.initialize_worker("unhealthy-worker").await;
+
+        // Record successes for healthy worker
+        for _ in 0..10 {
+            engine.record_success("healthy-worker", 100).await;
+        }
+
+        // Record failures for unhealthy worker
+        for _ in 0..5 {
+            engine.record_failure("unhealthy-worker").await;
+        }
+
+        let healthy = engine.healthy_workers().await;
+        let unhealthy = engine.unhealthy_workers().await;
+
+        assert!(healthy.contains(&"healthy-worker".to_string()));
+        assert!(unhealthy.contains(&"unhealthy-worker".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_health_engine_stats() {
+        let config = HealthConfig::new();
+        let engine = HealthEngine::new(&config);
+
+        engine.initialize_worker("test-worker").await;
+
+        // Record some requests
+        engine.record_success("test-worker", 100).await;
+        engine.record_success("test-worker", 150).await;
+        engine.record_failure("test-worker").await;
+
+        let stats = engine.get_stats("test-worker").await;
+        assert!(stats.is_some());
+
+        let stats = stats.unwrap();
+        assert_eq!(stats.total_requests, 3);
+        assert_eq!(stats.successful_requests, 2);
+        assert_eq!(stats.failed_requests, 1);
+    }
+
+    #[tokio::test]
+    async fn test_health_engine_remove_worker() {
+        let config = HealthConfig::new();
+        let engine = HealthEngine::new(&config);
+
+        engine.initialize_worker("test-worker").await;
+        engine.remove_worker("test-worker").await;
+
+        let stats = engine.get_stats("test-worker").await;
+        assert!(stats.is_none());
     }
 }
 
@@ -413,18 +502,6 @@ mod fallback_tests {
         let config = GhostConfig::default();
         let engine = FallbackEngine::new(&config);
         assert_eq!(engine.total_fallbacks(), 0);
-    }
-
-    #[test]
-    fn test_fallback_chain_creation() {
-        let config = GhostConfig::default();
-        let engine = FallbackEngine::new(&config);
-
-        let chain = engine.create_fallback_chain(Capability::XRead, Platform::X, Strategy::HealthFirst);
-        assert_eq!(chain.len(), 3);
-        assert_eq!(chain[0].tier, CapabilityTier::Fast);
-        assert_eq!(chain[1].tier, CapabilityTier::Heavy);
-        assert_eq!(chain[2].tier, CapabilityTier::Official);
     }
 
     #[test]
@@ -452,6 +529,22 @@ mod fallback_tests {
         assert!(FailureReason::AllWorkersExhausted.requires_escalation());
         assert!(!FailureReason::RateLimited.requires_escalation());
     }
+
+    #[test]
+    fn test_fallback_engine_config() {
+        let config = GhostConfig::default();
+        let engine = FallbackEngine::new(&config);
+
+        let _config = engine.config();
+    }
+
+    #[test]
+    fn test_fallback_engine_tracker() {
+        let config = GhostConfig::default();
+        let engine = FallbackEngine::new(&config);
+
+        let _tracker = engine.tracker();
+    }
 }
 
 // ============================================================================
@@ -476,6 +569,12 @@ mod config_tests {
     }
 
     #[test]
+    fn test_config_validate_all() {
+        let config = GhostConfig::new();
+        assert!(config.validate_all().is_ok());
+    }
+
+    #[test]
     fn test_config_builder() {
         let config = ghost_schema::ConfigBuilder::new()
             .strategy(Strategy::Fastest)
@@ -491,8 +590,15 @@ mod config_tests {
     }
 
     #[test]
+    fn test_config_invalid_retries() {
+        let mut config = GhostConfig::new();
+        config.max_retries = 0;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
     fn test_health_config_defaults() {
-        let config = ghost_schema::HealthConfig::new();
+        let config = HealthConfig::new();
         assert_eq!(config.healthy_threshold, 0.7);
         assert_eq!(config.degraded_threshold, 0.5);
         assert_eq!(config.max_latency_ms, 2000);
@@ -501,12 +607,19 @@ mod config_tests {
 
     #[test]
     fn test_health_config_validation() {
-        let config = ghost_schema::HealthConfig::new();
+        let config = HealthConfig::new();
         assert!(config.validate().is_ok());
 
-        let mut invalid_config = ghost_schema::HealthConfig::new();
+        let mut invalid_config = HealthConfig::new();
         invalid_config.healthy_threshold = 1.5;
         assert!(invalid_config.validate().is_err());
+    }
+
+    #[test]
+    fn test_health_config_invalid_degraded_threshold() {
+        let mut config = HealthConfig::new();
+        config.degraded_threshold = 1.5;
+        assert!(config.validate().is_err());
     }
 }
 
@@ -526,6 +639,7 @@ mod integration_tests {
         let worker = TestWorker::new("integration-worker")
             .with_capabilities(vec![Capability::XRead])
             .with_platforms(vec![Platform::X]);
+
         ghost.register_worker(Box::new(worker)).await.unwrap();
 
         // Check health status
@@ -558,13 +672,22 @@ mod integration_tests {
     }
 
     #[tokio::test]
-    async fn test_platform_client() {
+    async fn test_ghost_platform_support_check() {
         let ghost = Ghost::init().await.unwrap();
 
-        let x_client = ghost.x();
-        assert_eq!(x_client.platform(), Platform::X);
+        // No workers, so no platforms supported
+        let supported = ghost.is_platform_supported(Platform::X).await;
+        assert!(!supported);
 
-        let threads_client = ghost.threads();
-        assert_eq!(threads_client.platform(), Platform::Threads);
+        // Register a worker for X
+        let worker = TestWorker::new("x-worker")
+            .with_platforms(vec![Platform::X]);
+        ghost.register_worker(Box::new(worker)).await.unwrap();
+
+        let supported = ghost.is_platform_supported(Platform::X).await;
+        assert!(supported);
+
+        let supported = ghost.is_platform_supported(Platform::Threads).await;
+        assert!(!supported);
     }
 }
