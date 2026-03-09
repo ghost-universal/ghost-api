@@ -3,6 +3,7 @@
 //! This module contains tests for the core Ghost API functionality.
 
 use ghost_core::{Ghost, GhostConfig, GhostWorker, WorkerRegistry, HealthEngine, FallbackEngine};
+use ghost_core::config::GhostConfigExt;
 use ghost_schema::{
     Capability, CapabilityManifest, GhostError, PayloadBlob, PayloadContentType,
     Platform, RawContext, WorkerHealth, WorkerStatus, WorkerType, Strategy,

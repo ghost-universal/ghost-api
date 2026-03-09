@@ -6,7 +6,7 @@
 use async_trait::async_trait;
 use ghost_schema::{
     Capability, GhostError, PayloadBlob, RawContext, CapabilityManifest,
-    Platform, WorkerHealth, WorkerStatus, WorkerStats, HealthTier,
+    Platform, WorkerHealth, WorkerStatus,
 };
 
 /// The trait that scrapers implement to integrate with the engine.

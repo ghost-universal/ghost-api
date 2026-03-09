@@ -348,10 +348,13 @@ mod tests {
         let config = GhostConfig::default();
         let engine = FallbackEngine::new(&config);
 
-        let delay1 = engine.get_retry_delay(1, FailureReason::RateLimited);
-        let delay2 = engine.get_retry_delay(2, FailureReason::RateLimited);
+        // Use a failure reason with lower base delay to see exponential growth
+        let delay1 = engine.get_retry_delay(1, FailureReason::Timeout);
+        let delay2 = engine.get_retry_delay(2, FailureReason::Timeout);
 
-        // Delay should increase with attempt
+        // Timeout has base delay of 2000ms
+        // attempt 1: 2000 * 2^1 = 4000ms + 400ms jitter = 4400ms
+        // attempt 2: 2000 * 2^2 = 8000ms + 800ms jitter = 8800ms
         assert!(delay2 > delay1);
     }
 

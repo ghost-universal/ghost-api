@@ -22,7 +22,8 @@ use crate::{FallbackEngine, GhostConfig, HealthEngine, WorkerRegistry};
 pub struct GhostRouter {
     workers: Arc<tokio::sync::RwLock<WorkerRegistry>>,
     health_engine: Arc<HealthEngine>,
-    fallback: Arc<FallbackEngine>,
+    /// Fallback engine for tier escalation (reserved for future use)
+    _fallback: Arc<FallbackEngine>,
     config: Arc<GhostConfig>,
     /// Round-robin counter for RR strategy
     rr_counter: Arc<tokio::sync::Mutex<usize>>,
@@ -39,7 +40,7 @@ impl GhostRouter {
         Self {
             workers,
             health_engine,
-            fallback,
+            _fallback: fallback,
             config,
             rr_counter: Arc::new(tokio::sync::Mutex::new(0)),
         }
@@ -238,7 +239,7 @@ impl GhostRouter {
     /// Selects worker by health score
     async fn select_by_health(
         &self,
-        workers: &WorkerRegistry,
+        _workers: &WorkerRegistry,
         candidates: Vec<String>,
     ) -> Result<WorkerSelection, GhostError> {
         let mut best: Option<(String, f64)> = None;
@@ -265,7 +266,7 @@ impl GhostRouter {
     /// Selects worker by latency
     async fn select_by_latency(
         &self,
-        workers: &WorkerRegistry,
+        _workers: &WorkerRegistry,
         candidates: Vec<String>,
     ) -> Result<WorkerSelection, GhostError> {
         let mut best: Option<(String, u64)> = None;
@@ -299,7 +300,8 @@ impl GhostRouter {
 
         for id in &candidates {
             if let Some(worker) = workers.get(id) {
-                let cost = worker.manifest().worker_type.cost_multiplier();
+                // Use priority as inverse cost (higher priority = lower effective cost)
+                let cost = 1.0 / (worker.manifest().priority as f64 + 1.0);
 
                 if let Some((_, best_cost)) = &best {
                     if cost < *best_cost {

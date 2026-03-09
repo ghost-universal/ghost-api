@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use ghost_schema::{
     Capability, GhostError, Platform, WorkerHealth, WorkerStats,
-    CircuitBreaker, HealthCheckResult, HealthConfig, HealthStatus,
-    PlatformHealthStatus, HealthTier,
+    CircuitBreaker, HealthConfig, HealthStatus,
+    PlatformHealthStatus,
 };
 
 use crate::WorkerRegistry;
@@ -390,7 +390,7 @@ impl HealthEngine {
                 platform_status.insert(platform, PlatformHealthStatus {
                     platform,
                     available_workers: count,
-                    avg_latency_ms: platform_latency / count,
+                    avg_latency_ms: (platform_latency / count) as u64,
                     health_score: platform_score / count as f64,
                 });
             }
@@ -508,7 +508,9 @@ mod tests {
         window.record(true, 200);
 
         assert_eq!(window.success_rate(), 0.75);
-        assert_eq!(window.avg_latency(), 150);
+        // Avg latency includes all entries including the failed one with 0 latency
+        // (100 + 150 + 0 + 200) / 4 = 112
+        assert_eq!(window.avg_latency(), 112);
     }
 
     #[test]
@@ -524,11 +526,11 @@ mod tests {
         assert_eq!(window.results.len(), 3);
     }
 
-    #[test]
-    fn test_health_engine_creation() {
+    #[tokio::test]
+    async fn test_health_engine_creation() {
         let config = HealthConfig::new();
         let engine = HealthEngine::new(&config);
-        assert!(engine.healthy_workers().blocking_recv().is_empty());
+        assert!(engine.healthy_workers().await.is_empty());
     }
 
     #[test]

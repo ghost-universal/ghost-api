@@ -7,8 +7,9 @@ use std::sync::Arc;
 
 use ghost_schema::{
     GhostContext, GhostError, GhostPost, GhostUser, Platform, Strategy,
-    Capability, HealthStatus, CapabilityManifest, PayloadBlob,
+    Capability, HealthStatus,
 };
+
 
 use crate::{GhostRouter, GhostConfig, GhostEvent, HealthEngine, WorkerRegistry, FallbackEngine};
 
@@ -67,7 +68,7 @@ impl Ghost {
     /// Returns an error if the configuration is invalid or initialization fails.
     pub async fn init_with_config(config: GhostConfig) -> Result<Self, GhostError> {
         // Validate configuration
-        config.validate_all()?;
+        config.validate()?;
 
         // Create event broadcast channel
         let (event_tx, _) = tokio::sync::broadcast::channel(1000);
@@ -109,7 +110,7 @@ impl Ghost {
     ///
     /// The returned client can be used to make requests to the X platform
     /// with health-aware routing and fallback support.
-    pub fn x(&self) -> PlatformClient {
+    pub fn x(&self) -> PlatformClient<'_> {
         PlatformClient {
             platform: Platform::X,
             ghost: self,
@@ -120,7 +121,7 @@ impl Ghost {
     ///
     /// The returned client can be used to make requests to the Threads platform
     /// with health-aware routing and fallback support.
-    pub fn threads(&self) -> PlatformClient {
+    pub fn threads(&self) -> PlatformClient<'_> {
         PlatformClient {
             platform: Platform::Threads,
             ghost: self,
@@ -174,7 +175,6 @@ impl Ghost {
     pub async fn register_worker(&self, worker: Box<dyn crate::GhostWorker>) -> Result<(), GhostError> {
         let worker_id = worker.id().to_string();
         let capabilities = worker.capabilities();
-        let platforms = worker.platforms();
 
         {
             let mut registry = self.workers.write().await;
@@ -188,7 +188,6 @@ impl Ghost {
         self.emit_event(GhostEvent::WorkerRegistered {
             worker_id,
             capabilities,
-            platforms,
         });
 
         Ok(())
@@ -240,12 +239,19 @@ impl Ghost {
         let worker_ids: Vec<String> = workers.worker_ids().map(|s| s.clone()).collect();
         drop(workers);
 
-        for worker_id in worker_ids {
+        // Emit worker offline events for all workers
+        for worker_id in &worker_ids {
             tracing::debug!("Shutting down worker: {}", worker_id);
             // Workers will be dropped and their shutdown implementations called
         }
 
-        self.emit_event(GhostEvent::Shutdown);
+        // Emit worker offline events for all workers
+        for worker_id in worker_ids {
+            self.emit_event(GhostEvent::WorkerOffline {
+                worker_id,
+                reason: "Shutdown".to_string(),
+            });
+        }
         tracing::info!("Ghost shutdown complete");
 
         Ok(())

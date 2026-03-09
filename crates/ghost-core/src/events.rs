@@ -3,9 +3,7 @@
 //! This module defines events emitted by the Ghost engine
 //! for monitoring and observability.
 
-pub use ghost_schema::{
-    GhostEvent, SessionUnhealthyReason, SessionAction, AutoscaleEventType,
-};
+pub use ghost_schema::GhostEvent;
 
 /// Event handler trait for processing events
 ///
@@ -190,7 +188,7 @@ impl EventFilter {
 
     /// Checks if an event should be handled
     pub fn should_handle(&self, event: &GhostEvent) -> bool {
-        let event_type = event.event_type();
+        let event_type = event.event_type().to_string();
 
         // Check exclusion first
         if self.excluded_types.contains(&event_type) {
@@ -255,8 +253,11 @@ mod tests {
         let mut bus = EventBus::new();
         bus.add_handler(Box::new(EventLogger));
 
-        // Should not panic
-        bus.publish(&GhostEvent::Shutdown);
+        // Should not panic - use WorkerOffline event
+        bus.publish(&GhostEvent::WorkerOffline {
+            worker_id: "test".to_string(),
+            reason: "test".to_string(),
+        });
     }
 
     #[test]
@@ -271,22 +272,30 @@ mod tests {
 
     #[test]
     fn test_event_filter_allow() {
-        let filter = EventFilter::allow_only(vec!["WorkerRegistered", "Shutdown"]);
+        let filter = EventFilter::allow_only(vec!["worker_registered", "worker_offline"]);
 
-        assert!(filter.should_handle(&GhostEvent::Shutdown));
-        assert!(!filter.should_handle(&GhostEvent::HealthCheckPassed {
+        assert!(filter.should_handle(&GhostEvent::WorkerOffline {
             worker_id: "test".to_string(),
+            reason: "test".to_string(),
+        }));
+        assert!(!filter.should_handle(&GhostEvent::HealthCheckCompleted {
+            worker_id: "test".to_string(),
+            passed: true,
             latency_ms: 100,
         }));
     }
 
     #[test]
     fn test_event_filter_exclude() {
-        let filter = EventFilter::exclude(vec!["HealthCheckPassed"]);
+        let filter = EventFilter::exclude(vec!["health_check_completed"]);
 
-        assert!(filter.should_handle(&GhostEvent::Shutdown));
-        assert!(!filter.should_handle(&GhostEvent::HealthCheckPassed {
+        assert!(filter.should_handle(&GhostEvent::WorkerOffline {
             worker_id: "test".to_string(),
+            reason: "test".to_string(),
+        }));
+        assert!(!filter.should_handle(&GhostEvent::HealthCheckCompleted {
+            worker_id: "test".to_string(),
+            passed: true,
             latency_ms: 100,
         }));
     }

@@ -11,7 +11,7 @@ mod router;
 mod health;
 mod fallback;
 mod events;
-mod config;
+pub mod config;
 
 #[cfg(test)]
 mod mock;
@@ -22,7 +22,6 @@ pub use router::*;
 pub use health::*;
 pub use fallback::*;
 pub use events::*;
-pub use config::*;
 
 #[cfg(test)]
 pub use mock::*;
@@ -40,7 +39,7 @@ pub use ghost_schema::{
     GhostEvent, SessionUnhealthyReason, SessionAction, AutoscaleEventType,
     // Config types
     GhostConfig, HealthConfig, ScraperConfig, PlatformShieldConfig,
-    AutoscalingConfig, ScaleThreshold, ConfigBuilder,
+    AutoscalingConfig, ConfigBuilder,
     // Fallback types
     FallbackContext, FailureReason, FallbackAction, FallbackStep,
     FallbackEvent, FallbackTracker,
