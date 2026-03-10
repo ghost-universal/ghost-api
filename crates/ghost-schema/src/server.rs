@@ -301,7 +301,6 @@ pub struct SearchResponse {
 impl SearchResponse {
     /// Creates a new search response
     pub fn new(query: impl Into<String>) -> Self {
-        // TODO: Implement search response construction
         Self {
             results: Vec::new(),
             query: query.into(),
@@ -312,7 +311,6 @@ impl SearchResponse {
 
     /// Creates a search response with results
     pub fn with_results(query: impl Into<String>, results: Vec<GhostPost>) -> Self {
-        // TODO: Implement search response with results
         let total = results.len();
         Self {
             results,
@@ -326,6 +324,16 @@ impl SearchResponse {
     pub fn with_cursor(mut self, cursor: impl Into<String>) -> Self {
         self.next_cursor = Some(cursor.into());
         self
+    }
+
+    /// Returns the number of results
+    pub fn len(&self) -> usize {
+        self.results.len()
+    }
+
+    /// Returns whether there are no results
+    pub fn is_empty(&self) -> bool {
+        self.results.is_empty()
     }
 }
 
@@ -343,7 +351,6 @@ pub struct TimelineResponse {
 impl TimelineResponse {
     /// Creates a new timeline response
     pub fn new() -> Self {
-        // TODO: Implement timeline response construction
         Self {
             posts: Vec::new(),
             cursor_top: None,
@@ -358,6 +365,28 @@ impl TimelineResponse {
             cursor_top: None,
             cursor_bottom: None,
         }
+    }
+
+    /// Sets the top cursor
+    pub fn with_top_cursor(mut self, cursor: impl Into<String>) -> Self {
+        self.cursor_top = Some(cursor.into());
+        self
+    }
+
+    /// Sets the bottom cursor
+    pub fn with_bottom_cursor(mut self, cursor: impl Into<String>) -> Self {
+        self.cursor_bottom = Some(cursor.into());
+        self
+    }
+
+    /// Returns the number of posts
+    pub fn len(&self) -> usize {
+        self.posts.len()
+    }
+
+    /// Returns whether there are no posts
+    pub fn is_empty(&self) -> bool {
+        self.posts.is_empty()
     }
 }
 

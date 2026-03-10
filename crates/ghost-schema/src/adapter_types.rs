@@ -4,78 +4,113 @@
 //! and transforming platform-specific data into unified Ghost types.
 
 use serde::{Deserialize, Serialize};
-use crate::{Platform, GhostError};
+use crate::{Platform, GhostError, GhostPost, GhostUser, GhostMedia};
 
 // ============================================================================
 // Common Adapter Types
 // ============================================================================
 
 /// Result of parsing a platform response
-#[derive(Debug, Clone)]
-pub enum AdapterParseResult {
-    /// Single user profile
-    User(crate::GhostUser),
-    /// Single post
-    Post(crate::GhostPost),
-    /// Multiple posts
-    Posts(Vec<crate::GhostPost>),
-    /// Search results with pagination
-    Search {
-        posts: Vec<crate::GhostPost>,
-        cursor: Option<String>,
-    },
-    /// Timeline with bidirectional pagination
-    Timeline {
-        posts: Vec<crate::GhostPost>,
-        cursor_top: Option<String>,
-        cursor_bottom: Option<String>,
-    },
-    /// Thread/conversation
-    Thread {
-        posts: Vec<crate::GhostPost>,
-        cursor: Option<String>,
-    },
-    /// Trending topics
-    Trending(Vec<TrendingTopic>),
-    /// Error response
-    Error(AdapterError),
+#[derive(Debug, Clone, Default)]
+pub struct AdapterParseResult {
+    /// Parsed posts
+    pub posts: Vec<GhostPost>,
+    /// Parsed users
+    pub users: Vec<GhostUser>,
+    /// Parsed media
+    pub media: Vec<GhostMedia>,
+    /// Raw metadata preserved from platform
+    pub raw_metadata: Option<serde_json::Value>,
+    /// Source URL
+    pub source_url: String,
+    /// Next page cursor
+    pub cursor: Option<String>,
+    /// Top cursor for bidirectional pagination
+    pub cursor_top: Option<String>,
+    /// Bottom cursor for bidirectional pagination
+    pub cursor_bottom: Option<String>,
+    /// Error if parsing failed
+    pub error: Option<AdapterError>,
 }
 
 impl AdapterParseResult {
-    /// Returns the posts if this is a posts result
-    pub fn into_posts(self) -> Option<Vec<crate::GhostPost>> {
-        // TODO: Implement posts extraction
-        match self {
-            AdapterParseResult::Posts(posts) => Some(posts),
-            AdapterParseResult::Search { posts, .. } => Some(posts),
-            AdapterParseResult::Timeline { posts, .. } => Some(posts),
-            AdapterParseResult::Thread { posts, .. } => Some(posts),
-            _ => None,
+    /// Create a new empty result
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create with posts
+    pub fn with_posts(posts: Vec<GhostPost>) -> Self {
+        Self {
+            posts,
+            ..Default::default()
         }
     }
 
-    /// Returns the single post if this is a post result
-    pub fn into_post(self) -> Option<crate::GhostPost> {
-        // TODO: Implement post extraction
-        match self {
-            AdapterParseResult::Post(post) => Some(post),
-            _ => None,
+    /// Create with a single post
+    pub fn with_post(post: GhostPost) -> Self {
+        Self {
+            posts: vec![post],
+            ..Default::default()
         }
     }
 
-    /// Returns the user if this is a user result
-    pub fn into_user(self) -> Option<crate::GhostUser> {
-        // TODO: Implement user extraction
-        match self {
-            AdapterParseResult::User(user) => Some(user),
-            _ => None,
+    /// Create with a single user
+    pub fn with_user(user: GhostUser) -> Self {
+        Self {
+            users: vec![user],
+            ..Default::default()
         }
     }
 
-    /// Check if this is an error result
+    /// Create with error
+    pub fn with_error(error: AdapterError) -> Self {
+        Self {
+            error: Some(error),
+            ..Default::default()
+        }
+    }
+
+    /// Set source URL
+    pub fn source(mut self, url: impl Into<String>) -> Self {
+        self.source_url = url.into();
+        self
+    }
+
+    /// Set cursor
+    pub fn with_cursor(mut self, cursor: impl Into<String>) -> Self {
+        self.cursor = Some(cursor.into());
+        self
+    }
+
+    /// Returns the posts
+    pub fn into_posts(self) -> Vec<GhostPost> {
+        self.posts
+    }
+
+    /// Returns the first post
+    pub fn into_post(self) -> Option<GhostPost> {
+        self.posts.into_iter().next()
+    }
+
+    /// Returns the first user
+    pub fn into_user(self) -> Option<GhostUser> {
+        self.users.into_iter().next()
+    }
+
+    /// Check if this has an error
     pub fn is_error(&self) -> bool {
-        // TODO: Implement error check
-        matches!(self, AdapterParseResult::Error(_))
+        self.error.is_some()
+    }
+
+    /// Check if empty
+    pub fn is_empty(&self) -> bool {
+        self.posts.is_empty() && self.users.is_empty()
+    }
+
+    /// Get post count
+    pub fn len(&self) -> usize {
+        self.posts.len()
     }
 }
 

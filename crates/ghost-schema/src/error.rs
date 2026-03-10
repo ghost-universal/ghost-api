@@ -126,7 +126,6 @@ impl From<serde_json::Error> for GhostError {
 impl GhostError {
     /// Returns whether this error is retryable
     pub fn is_retryable(&self) -> bool {
-        // TODO: Implement retryability determination logic
         matches!(
             self,
             GhostError::NetworkError(_)
@@ -138,7 +137,6 @@ impl GhostError {
 
     /// Returns whether this error indicates an account issue
     pub fn is_account_issue(&self) -> bool {
-        // TODO: Implement account issue detection
         matches!(
             self,
             GhostError::AuthError(_)
@@ -149,13 +147,11 @@ impl GhostError {
 
     /// Returns whether this error indicates a proxy issue
     pub fn is_proxy_issue(&self) -> bool {
-        // TODO: Implement proxy issue detection
         matches!(self, GhostError::ProxyError(_))
     }
 
     /// Returns the retry-after duration if available
     pub fn retry_after(&self) -> Option<std::time::Duration> {
-        // TODO: Implement retry-after extraction
         match self {
             GhostError::RateLimited { retry_after, .. } => {
                 retry_after.map(|s| std::time::Duration::from_secs(s))
@@ -166,7 +162,6 @@ impl GhostError {
 
     /// Returns the platform if this error is platform-specific
     pub fn platform(&self) -> Option<crate::Platform> {
-        // TODO: Implement platform extraction
         match self {
             GhostError::PlatformError { platform, .. } => Some(*platform),
             GhostError::RateLimited { platform, .. } => Some(*platform),
@@ -178,7 +173,6 @@ impl GhostError {
 
     /// Creates a trace string for debugging
     pub fn to_trace(&self) -> String {
-        // TODO: Implement detailed error trace generation
         format!("{:#?}", self)
     }
 }

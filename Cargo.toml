@@ -28,10 +28,10 @@ serde_json = "1.0"
 
 # HTTP & Web
 axum = "0.7"
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace"] }
-utoipa = "4.2"
-utoipa-swagger-ui = "4.0"
+tower = { version = "0.4", features = ["limit", "util"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "limit"] }
+utoipa = { version = "4.2", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "4.0", features = ["axum"] }
 
 # Tracing & Observability
 tracing = "0.1"

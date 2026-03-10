@@ -112,6 +112,17 @@ impl HealthTier {
     }
 }
 
+impl std::fmt::Display for HealthTier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HealthTier::Healthy => write!(f, "healthy"),
+            HealthTier::Degraded => write!(f, "degraded"),
+            HealthTier::Unhealthy => write!(f, "unhealthy"),
+            HealthTier::Dead => write!(f, "dead"),
+        }
+    }
+}
+
 /// Worker operational status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
