@@ -3,15 +3,39 @@
 //! Maps Threads' internal relay-style JSON to Ghost AST.
 //!
 //! All types are imported from `ghost-schema` - the single source of truth.
+//!
+//! ## Fallback Hierarchy
+//!
+//! The adapter supports multiple data sources:
+//! 1. Scraper output (Tier 1 - Fast)
+//! 2. Relay/GraphQL responses (Tier 2 - Heavy)
+//! 3. Official Threads API (Tier 3 - Last Resort Fallback)
+//!
+//! The official API client (`ThreadsOfficialClient`) provides access to
+//! Meta's official Threads Graph API for when all scraper-based approaches fail.
 
 mod adapter;
 mod parser;
 mod relay;
 mod scraper_parser;
+pub mod official;
 
 pub use adapter::ThreadsAdapter;
 pub use parser::{PostParser, UserParser};
 pub use relay::{RelayResponse, RelayError, ThreadsQueries, ThreadsHeaders, ThreadsRequestBuilder};
+
+// Re-export official API client types
+pub use official::{
+    ThreadsOfficialClient, ThreadsScope, CreateMediaRequest, ReplyControlType,
+    ContainerStatusType, ContainerStatus,
+    // Response types
+    ThreadsMedia, ThreadsUser, ApiResponse, ApiError, Paging, Cursors,
+    MediaContainer, InsightsResponse, InsightMetric, InsightValue,
+    TokenResponse, LongLivedTokenResponse,
+    // Constants
+    THREADS_API_BASE_URL, DEFAULT_API_VERSION, MAX_POSTS_PER_DAY,
+    MAX_TEXT_LENGTH, MAX_CAROUSEL_ITEMS,
+};
 
 // Re-export adapter types from ghost-schema
 pub use ghost_schema::{
@@ -20,7 +44,7 @@ pub use ghost_schema::{
     // Threads-specific types
     ThreadsError, ThreadsUserMetadata, ThreadsPostMetadata, ThreadsPostType, ThreadsAuth, BioLink,
     ThreadsMediaContainer, ThreadsUserResponse, ThreadsInsightsResponse,
-    ThreadsListResponse, ThreadsPagination, ThreadsErrorResponse,
+    ThreadsListResponse, ThreadsPaging, ThreadsErrorResponse, ThreadsCursors,
     ThreadsMention, LinkEntity, ReplyAudience, HideStatus,
     // Common adapter types
     AdapterParseResult, AdapterError, TrendingTopic,
@@ -85,12 +109,12 @@ mod types {
         /// Thread (conversation)
         Thread {
             posts: Vec<GhostPost>,
-            pagination: Option<ghost_schema::ThreadsPagination>,
+            pagination: Option<ghost_schema::ThreadsPaging>,
         },
         /// Timeline
         Timeline {
             posts: Vec<GhostPost>,
-            pagination: Option<ghost_schema::ThreadsPagination>,
+            pagination: Option<ghost_schema::ThreadsPaging>,
         },
         /// Error
         Error(ghost_schema::ThreadsError),

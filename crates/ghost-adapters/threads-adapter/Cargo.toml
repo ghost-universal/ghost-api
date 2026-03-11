@@ -16,5 +16,18 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
 
+# HTTP client for official API
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+
+# Async runtime
+tokio = { workspace = true }
+
+# URL handling
+url = "2.5"
+base64 = "0.22"
+
+# URL encoding
+urlencoding = "2.1"
+
 [features]
 default = []
