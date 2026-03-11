@@ -154,10 +154,11 @@ impl CachedSecret {
 // ============================================================================
 
 /// Proxy rotation strategy
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProxyRotation {
     /// Round-robin rotation
+    #[default]
     RoundRobin,
     /// Random selection
     Random,
@@ -180,12 +181,6 @@ impl ProxyRotation {
             ProxyRotation::StickySession => "Sticky Session",
             ProxyRotation::Geographic => "Geographic",
         }
-    }
-}
-
-impl Default for ProxyRotation {
-    fn default() -> Self {
-        ProxyRotation::RoundRobin
     }
 }
 

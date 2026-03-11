@@ -92,10 +92,11 @@ pub fn parse_threads_search(data: &serde_json::Value) -> Result<Vec<GhostPost>, 
 }
 
 // Local types module
+#[allow(dead_code)]
 mod types {
     //! Threads-specific types not in ghost-schema
     
-    use ghost_schema::{GhostPost, GhostUser, Platform};
+    use ghost_schema::{GhostPost, GhostUser};
 
     /// Threads parse result type
     #[derive(Debug, Clone)]
@@ -103,7 +104,7 @@ mod types {
         /// Single user profile
         User(GhostUser),
         /// Single post
-        Post(GhostPost),
+        Post(Box<GhostPost>),
         /// Multiple posts
         Posts(Vec<GhostPost>),
         /// Thread (conversation)
@@ -134,7 +135,7 @@ mod types {
         /// Get single post if present
         pub fn into_post(self) -> Option<GhostPost> {
             match self {
-                ThreadsParseResult::Post(post) => Some(post),
+                ThreadsParseResult::Post(post) => Some(*post),
                 _ => None,
             }
         }

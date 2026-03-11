@@ -314,7 +314,7 @@ impl HealthEngine {
 
     /// Performs health checks on all workers
     pub async fn check_all(&self, registry: &WorkerRegistry) -> Result<(), GhostError> {
-        let worker_ids: Vec<String> = registry.worker_ids().map(|s| s.clone()).collect();
+        let worker_ids: Vec<String> = registry.worker_ids().cloned().collect();
 
         for worker_id in worker_ids {
             if let Some(worker) = registry.get(&worker_id) {

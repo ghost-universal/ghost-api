@@ -154,7 +154,7 @@ impl GhostError {
     pub fn retry_after(&self) -> Option<std::time::Duration> {
         match self {
             GhostError::RateLimited { retry_after, .. } => {
-                retry_after.map(|s| std::time::Duration::from_secs(s))
+                retry_after.map(std::time::Duration::from_secs)
             }
             _ => None,
         }

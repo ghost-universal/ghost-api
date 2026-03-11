@@ -360,8 +360,7 @@ mod tests {
 
     #[test]
     fn test_record_fallback() {
-        let mut config = GhostConfig::default();
-        config.max_retries = 3;
+        let config = GhostConfig { max_retries: 3, ..Default::default() };
         let mut engine = FallbackEngine::new(&config);
 
         let event = FallbackEvent::new("worker1", FailureReason::RateLimited, CapabilityTier::Fast);

@@ -46,7 +46,7 @@ impl PostParser {
         // Parse created_at
         let created_at = data.get("created_at")
             .and_then(|v| v.as_str())
-            .and_then(|s| parse_twitter_timestamp(s))
+            .and_then(parse_twitter_timestamp)
             .unwrap_or(0);
 
         // Parse in_reply_to
@@ -250,7 +250,7 @@ impl PostParser {
                     .filter_map(|h| {
                         Some(HashtagEntity::new(
                             h.get("text").and_then(|t| t.as_str())?,
-                            h.get("indices").and_then(|i| i.as_array())?.get(0)?.as_u64()? as usize,
+                            h.get("indices").and_then(|i| i.as_array())?.first()?.as_u64()? as usize,
                             h.get("indices").and_then(|i| i.as_array())?.get(1)?.as_u64()? as usize,
                         ))
                     })
@@ -274,7 +274,7 @@ impl PostParser {
                         Some(UserMention::new(
                             m.get("id_str").and_then(|i| i.as_str())?,
                             m.get("screen_name").and_then(|s| s.as_str())?,
-                            indices.get(0)?.as_u64()? as usize,
+                            indices.first()?.as_u64()? as usize,
                             indices.get(1)?.as_u64()? as usize,
                         ))
                     })
@@ -298,7 +298,7 @@ impl PostParser {
                         Some(UrlEntity::new(
                             u.get("url").and_then(|u| u.as_str())?,
                             u.get("expanded_url").and_then(|e| e.as_str())?,
-                            indices.get(0)?.as_u64()? as usize,
+                            indices.first()?.as_u64()? as usize,
                             indices.get(1)?.as_u64()? as usize,
                         ))
                     })
@@ -413,7 +413,7 @@ impl UserParser {
         let created_at = legacy.and_then(|l| l.get("created_at"))
             .or_else(|| data.get("created_at"))
             .and_then(|s| s.as_str())
-            .and_then(|s| parse_twitter_timestamp(s));
+            .and_then(parse_twitter_timestamp);
 
         Ok(GhostUser {
             id,
@@ -467,7 +467,7 @@ impl UserParser {
             followers_you_follow: None,
             can_dm: legacy.and_then(|l| l.get("can_dm")).and_then(|c| c.as_bool()).unwrap_or(true),
             can_media_tag: legacy.and_then(|l| l.get("can_media_tag")).and_then(|c| c.as_bool()).unwrap_or(true),
-            created_at: legacy.and_then(|l| l.get("created_at")).and_then(|s| s.as_str()).and_then(|s| parse_twitter_timestamp(s)),
+            created_at: legacy.and_then(|l| l.get("created_at")).and_then(|s| s.as_str()).and_then(parse_twitter_timestamp),
             location: legacy.and_then(|l| l.get("location")).and_then(|l| l.as_str()).map(|s| s.to_string()),
             pinned_tweet_id: None,
             listed_count: legacy.and_then(|l| l.get("listed_count")).and_then(|l| l.as_u64()),

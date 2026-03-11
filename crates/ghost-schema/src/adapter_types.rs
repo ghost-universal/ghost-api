@@ -986,7 +986,7 @@ pub struct XTweetData {
 }
 
 /// X tweet metrics
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct XTweetMetrics {
     /// Like count
     pub like_count: u64,
@@ -1000,19 +1000,6 @@ pub struct XTweetMetrics {
     pub impression_count: u64,
     /// Bookmark count
     pub bookmark_count: Option<u64>,
-}
-
-impl Default for XTweetMetrics {
-    fn default() -> Self {
-        Self {
-            like_count: 0,
-            retweet_count: 0,
-            reply_count: 0,
-            quote_count: 0,
-            impression_count: 0,
-            bookmark_count: None,
-        }
-    }
 }
 
 /// X referenced tweet
@@ -1249,7 +1236,7 @@ pub struct XUserData {
 }
 
 /// X user metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct XUserMetrics {
     /// Followers count
     pub followers_count: u64,
@@ -1259,17 +1246,6 @@ pub struct XUserMetrics {
     pub tweet_count: u64,
     /// Listed count
     pub listed_count: u64,
-}
-
-impl Default for XUserMetrics {
-    fn default() -> Self {
-        Self {
-            followers_count: 0,
-            following_count: 0,
-            tweet_count: 0,
-            listed_count: 0,
-        }
-    }
 }
 
 /// X user entities

@@ -8,12 +8,13 @@ use ghost_schema::{
 };
 
 use crate::parser::{PostParser, UserParser};
-use crate::relay::{RelayResponse, ThreadsQueries};
+use crate::relay::RelayResponse;
 use crate::scraper_parser::ScraperParser;
 
 /// Threads platform adapter
 pub struct ThreadsAdapter {
     /// Platform identifier
+    #[allow(dead_code)]
     platform: Platform,
     /// Post parser
     post_parser: PostParser,

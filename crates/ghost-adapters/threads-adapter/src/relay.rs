@@ -75,6 +75,7 @@ pub struct RelayErrorExtensions {
 }
 
 /// Relay pagination cursor
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelayCursor {
     /// Cursor string
@@ -89,6 +90,7 @@ pub struct RelayCursor {
     pub end_cursor: Option<String>,
 }
 
+#[allow(dead_code)]
 impl RelayCursor {
     /// Parses cursor from response
     pub fn from_value(value: &serde_json::Value) -> Option<Self> {

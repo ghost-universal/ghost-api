@@ -3,6 +3,9 @@
 //! This module defines the worker trait and registry for managing
 //! scraper workers of different types.
 
+#![allow(clippy::borrowed_box)]
+#![allow(clippy::unnecessary_sort_by)]
+
 use async_trait::async_trait;
 use ghost_schema::{
     Capability, GhostError, PayloadBlob, RawContext, CapabilityManifest,
@@ -140,7 +143,7 @@ impl WorkerRegistry {
         for cap in &capabilities {
             self.workers_by_capability
                 .entry(*cap)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(id.clone());
         }
 
@@ -148,7 +151,7 @@ impl WorkerRegistry {
         for platform in &platforms {
             self.workers_by_platform
                 .entry(*platform)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(id.clone());
         }
 
@@ -263,7 +266,7 @@ impl WorkerRegistry {
 
     /// Returns capabilities available for a platform name
     pub fn capabilities_for_platform(&self, platform: &str) -> Vec<Capability> {
-        let platform = Platform::from_str(platform);
+        let platform = Platform::parse(platform);
         if platform == Platform::Unknown {
             return Vec::new();
         }
@@ -351,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_registry_register() {
-        let mut registry = WorkerRegistry::new();
+        let registry = WorkerRegistry::new();
         // Registry should start empty
         assert!(registry.is_empty());
     }

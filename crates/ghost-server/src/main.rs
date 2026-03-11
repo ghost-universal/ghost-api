@@ -3,9 +3,6 @@
 //! HTTP server with Swagger UI for the Ghost API.
 //! Provides REST endpoints for interacting with social media platforms.
 
-use std::net::SocketAddr;
-use std::sync::Arc;
-
 use ghost_server::{create_app, ServerConfig};
 use tokio::signal;
 

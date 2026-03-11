@@ -3,6 +3,8 @@
 //! This module provides types for testing Ghost API without real platform access.
 //! Includes mock workers, VCR recording/playback, and chaos testing utilities.
 
+#![allow(clippy::large_enum_variant)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -241,7 +243,7 @@ impl MockResponse {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum MockData {
     /// Single post
-    Post(GhostPost),
+    Post(Box<GhostPost>),
     /// Multiple posts
     Posts(Vec<GhostPost>),
     /// User profile
@@ -258,7 +260,7 @@ impl MockData {
     /// Creates post mock data
     pub fn post(post: GhostPost) -> Self {
         // TODO: Implement post data construction
-        Self::Post(post)
+        Self::Post(Box::new(post))
     }
 
     /// Creates posts mock data

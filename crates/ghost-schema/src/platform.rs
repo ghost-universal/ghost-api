@@ -92,8 +92,8 @@ impl Platform {
         }
     }
 
-    /// Parses a platform from a string
-    pub fn from_str(s: &str) -> Self {
+    /// Parses a platform from a string (convenience method)
+    pub fn parse(s: &str) -> Self {
         // TODO: Implement platform parsing with normalization
         match s.to_lowercase().as_str() {
             "x" | "twitter" => Platform::X,
@@ -120,7 +120,7 @@ impl std::str::FromStr for Platform {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // TODO: Implement proper platform parsing with error
-        Ok(Self::from_str(s))
+        Ok(Self::parse(s))
     }
 }
 

@@ -9,14 +9,14 @@
 
 use std::time::Duration;
 
-use chrono::{DateTime, FixedOffset, Utc};
+use chrono::{DateTime, FixedOffset};
 use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info};
 
 use ghost_schema::{
-    AdapterError, GhostError, GhostMedia, GhostPost, GhostUser,
-    MediaType, Platform, ThreadsAuth, ThreadsPostType,
+    GhostError, GhostMedia, GhostPost, GhostUser,
+    MediaType, Platform,
 };
 
 // ============================================================================
@@ -1011,7 +1011,7 @@ impl ThreadsOfficialClient {
     /// Waits for media processing to complete
     async fn wait_for_processing(
         &self,
-        user_id: &str,
+        _user_id: &str,
         access_token: &str,
         container_id: &str,
     ) -> Result<ContainerStatus, GhostError> {

@@ -75,12 +75,12 @@ mod platform_tests {
     use ghost_schema::Platform;
 
     #[test]
-    fn test_platform_from_str() {
+    fn test_platform_parse() {
         // TODO: Implement platform parsing test
-        assert_eq!(Platform::from_str("x"), Platform::X);
-        assert_eq!(Platform::from_str("twitter"), Platform::X);
-        assert_eq!(Platform::from_str("threads"), Platform::Threads);
-        assert_eq!(Platform::from_str("unknown"), Platform::Unknown);
+        assert_eq!(Platform::parse("x"), Platform::X);
+        assert_eq!(Platform::parse("twitter"), Platform::X);
+        assert_eq!(Platform::parse("threads"), Platform::Threads);
+        assert_eq!(Platform::parse("unknown"), Platform::Unknown);
     }
 
     #[test]

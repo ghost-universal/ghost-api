@@ -52,7 +52,7 @@ pub fn unix_to_iso8601(_unix: i64) -> String {
     // TODO: Implement Unix to ISO 8601 conversion
     // - Convert Unix timestamp to DateTime<Utc>
     // - Format as ISO 8601 with Z suffix
-    format!("1970-01-01T00:00:00Z")
+    "1970-01-01T00:00:00Z".to_string()
 }
 
 /// Convert Unix timestamp to Threads format
@@ -60,7 +60,7 @@ pub fn unix_to_threads_timestamp(_unix: i64) -> String {
     // TODO: Implement Unix to Threads timestamp conversion
     // - Convert Unix timestamp to DateTime<Utc>
     // - Format with +0000 timezone suffix
-    format!("1970-01-01T00:00:00+0000")
+    "1970-01-01T00:00:00+0000".to_string()
 }
 
 // ============================================================================

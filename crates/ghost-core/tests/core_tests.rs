@@ -6,7 +6,7 @@ use ghost_core::{Ghost, GhostConfig, GhostWorker, WorkerRegistry, HealthEngine, 
 use ghost_core::config::GhostConfigExt;
 use ghost_schema::{
     Capability, CapabilityManifest, GhostError, PayloadBlob, PayloadContentType,
-    Platform, RawContext, WorkerHealth, WorkerStatus, WorkerType, Strategy,
+    Platform, RawContext, WorkerStatus, WorkerType, Strategy,
     CapabilityTier, FailureReason, HealthConfig,
 };
 use async_trait::async_trait;

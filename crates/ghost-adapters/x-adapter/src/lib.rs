@@ -4,6 +4,8 @@
 //!
 //! All types are imported from `ghost-schema` - the single source of truth.
 
+#![allow(clippy::large_enum_variant)]
+
 mod adapter;
 mod parser;
 mod selectors;
@@ -64,10 +66,11 @@ pub fn parse_x_trending(data: &serde_json::Value) -> Result<Vec<TrendingTopic>, 
 }
 
 // Local types module
+#[allow(dead_code)]
 mod types {
     //! X-specific types not in ghost-schema
     
-    use ghost_schema::{GhostPost, GhostUser, Platform};
+    use ghost_schema::{GhostPost, GhostUser};
 
     /// X parse result type
     #[derive(Debug, Clone)]
@@ -75,7 +78,7 @@ mod types {
         /// Single user profile
         User(GhostUser),
         /// Single post/tweet
-        Post(GhostPost),
+        Post(Box<GhostPost>),
         /// Multiple posts
         Posts(Vec<GhostPost>),
         /// Timeline with bidirectional pagination
@@ -103,7 +106,7 @@ mod types {
         /// Get single post if present
         pub fn into_post(self) -> Option<GhostPost> {
             match self {
-                XParseResult::Post(post) => Some(post),
+                XParseResult::Post(post) => Some(*post),
                 _ => None,
             }
         }

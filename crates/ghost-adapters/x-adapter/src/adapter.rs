@@ -13,6 +13,7 @@ use crate::parser::{PostParser, UserParser};
 /// X (Twitter) platform adapter
 pub struct XAdapter {
     /// Platform identifier
+    #[allow(dead_code)]
     platform: Platform,
     /// Post parser
     post_parser: PostParser,

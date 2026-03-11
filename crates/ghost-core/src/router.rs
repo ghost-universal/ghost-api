@@ -384,7 +384,7 @@ impl GhostRouter {
         let scraper_candidates: Vec<String> = candidates
             .iter()
             .filter(|id| {
-                workers.get(*id)
+                workers.get(id)
                     .map(|w| w.manifest().worker_type != ghost_schema::WorkerType::Official)
                     .unwrap_or(false)
             })
@@ -761,18 +761,14 @@ impl GhostRouter {
             }
             serde_json::Value::Object(ref map) if map.contains_key("data") => {
                 // Handle wrapped responses
-                if let Some(data) = map.get("data") {
-                    if let serde_json::Value::Array(items) = data {
-                        let mut result = Vec::with_capacity(items.len());
-                        for item in items {
-                            if let Ok(post) = self.parse_single_post(item.clone(), platform) {
-                                result.push(post);
-                            }
+                if let Some(serde_json::Value::Array(items)) = map.get("data") {
+                    let mut result = Vec::with_capacity(items.len());
+                    for item in items {
+                        if let Ok(post) = self.parse_single_post(item.clone(), platform) {
+                            result.push(post);
                         }
-                        result
-                    } else {
-                        vec![]
                     }
+                    result
                 } else {
                     vec![]
                 }

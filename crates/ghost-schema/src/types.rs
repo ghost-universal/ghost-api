@@ -231,7 +231,7 @@ pub enum MediaType {
 // ============================================================================
 
 /// GhostContext for multi-tenant request configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GhostContext {
     /// Tenant identifier
     pub tenant_id: Option<String>,
@@ -261,18 +261,7 @@ impl GhostContext {
     }
 }
 
-impl Default for GhostContext {
-    fn default() -> Self {
-        Self {
-            tenant_id: None,
-            proxy: None,
-            session: None,
-            strategy: Strategy::default(),
-            budget: None,
-            metadata: HashMap::new(),
-        }
-    }
-}
+
 
 /// Builder for GhostContext
 #[derive(Debug, Default)]

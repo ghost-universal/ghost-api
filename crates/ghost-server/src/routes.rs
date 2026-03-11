@@ -5,7 +5,6 @@
 
 use axum::Router;
 use axum::routing::{get, post};
-use utoipa::OpenApi;
 use std::sync::Arc;
 
 use crate::handlers;

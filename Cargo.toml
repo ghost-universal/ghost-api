@@ -64,15 +64,6 @@ ghost-vault = { path = "crates/ghost-vault" }
 x-adapter = { path = "crates/ghost-adapters/x-adapter" }
 threads-adapter = { path = "crates/ghost-adapters/threads-adapter" }
 
-[workspace.features]
-default = ["x-adapter", "threads-adapter"]
-ts = ["ghost-bridge/napi"]
-python = ["ghost-bridge/pyo3"]
-go = ["ghost-bridge/grpc"]
-x-adapter = []
-threads-adapter = []
-server = []
-
 # =========================
 # Build Profiles
 # =========================

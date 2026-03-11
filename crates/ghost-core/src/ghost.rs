@@ -236,7 +236,7 @@ impl Ghost {
 
         // Shutdown all workers
         let workers = self.workers.read().await;
-        let worker_ids: Vec<String> = workers.worker_ids().map(|s| s.clone()).collect();
+        let worker_ids: Vec<String> = workers.worker_ids().cloned().collect();
         drop(workers);
 
         // Emit worker offline events for all workers

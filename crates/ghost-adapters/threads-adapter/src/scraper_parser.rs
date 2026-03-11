@@ -6,8 +6,8 @@
 //! and provides defaults for missing fields per the ghost-mapping.md specification.
 
 use ghost_schema::{
-    GhostError, GhostPost, GhostUser, GhostMedia, MediaType,
-    Platform, PayloadBlob, PayloadContentType, AdapterParseResult,
+    GhostError, GhostPost, GhostUser,
+    Platform, PayloadBlob, AdapterParseResult,
 };
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
