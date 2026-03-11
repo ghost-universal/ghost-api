@@ -103,6 +103,10 @@ impl ScraperParser {
             media: vec![],  // Media is embedded in posts
             raw_metadata: None,
             source_url: self.source_url.clone(),
+            cursor: None,
+            cursor_top: None,
+            cursor_bottom: None,
+            error: None,
         };
         
         Ok(result)
@@ -135,6 +139,10 @@ impl ScraperParser {
             media: vec![],
             raw_metadata: Some(response.metadata),
             source_url: response.source_url,
+            cursor: None,
+            cursor_top: None,
+            cursor_bottom: None,
+            error: None,
         })
     }
     
@@ -165,9 +173,9 @@ impl ScraperParser {
         };
         
         GhostPost {
-            id: post.id,
+            id: post.id.clone(),
             platform: Platform::Threads,
-            text: post.text.unwrap_or_default(),
+            text: post.text.clone().unwrap_or_default(),
             author,
             media: vec![],  // Not extracted by scraper - empty per architecture
             created_at: current_timestamp(),  // CRITICAL GAP: Not available from scraper - use current time as fallback

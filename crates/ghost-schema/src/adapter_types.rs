@@ -986,7 +986,7 @@ pub struct XTweetData {
 }
 
 /// X tweet metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct XTweetMetrics {
     /// Like count
     pub like_count: u64,

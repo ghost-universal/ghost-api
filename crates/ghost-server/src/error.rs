@@ -136,7 +136,7 @@ impl IntoResponse for ServerError {
             let mut response = (status, body).into_response();
             response.headers_mut().insert(
                 axum::http::header::RETRY_AFTER,
-                axum::http::HeaderValue::from(secs),
+                axum::http::HeaderValue::from(*secs as i64),
             );
             response
         } else {

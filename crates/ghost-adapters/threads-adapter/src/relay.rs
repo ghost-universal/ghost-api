@@ -268,18 +268,19 @@ impl ThreadsRequestBuilder {
 
 /// URL encoding module (simple implementation)
 mod urlencoding {
+    use super::percent_encoding::{percent_encode, NON_ALPHANUMERIC};
+    
     pub fn encode(s: &str) -> String {
-        percent_encoding::percent_encode(s.as_bytes(), percent_encoding::NON_ALPHANUMERIC).to_string()
+        percent_encode(s.as_bytes(), NON_ALPHANUMERIC).to_string()
     }
 }
 
 // Add percent_encoding dependency inline for simplicity
 mod percent_encoding {
-    pub const NON_ALPHANUMERIC: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'#').add(b'<').add(b'>').add(b'`')
+    pub const NON_ALPHANUMERIC: &AsciiSet = &AsciiSet::new()
+        .add_range(0x00..0x20)  // Controls
+        .add(b' ').add(b'"').add(b'#').add(b'<').add(b'>').add(b'`')
         .add(b'?').add(b'{').add(b'}').add(b'%').add(b'&').add(b'=').add(b'+');
-
-    const CONTROLS: &AsciiSet = &AsciiSet::new()
-        .add(0x00..=0x1F);
 
     pub struct AsciiSet {
         bits: [u64; 4],
@@ -309,13 +310,13 @@ mod percent_encoding {
         }
     }
 
-    pub fn percent_encode(input: &[u8], set: &AsciiSet) -> PercentEncode {
+    pub fn percent_encode<'a>(input: &'a [u8], set: &'a AsciiSet) -> PercentEncode<'a> {
         PercentEncode { bytes: input.iter(), set }
     }
 
     pub struct PercentEncode<'a> {
         bytes: std::slice::Iter<'a, u8>,
-        set: &'static AsciiSet,
+        set: &'a AsciiSet,
     }
 
     impl<'a> std::fmt::Display for PercentEncode<'a> {

@@ -18,13 +18,18 @@ impl PostParser {
 
     /// Parses post data into GhostPost
     pub fn parse(&self, data: &serde_json::Value) -> Result<GhostPost, GhostError> {
-        // Get post ID
-        let id = data.get("id")
-            .or_else(|| data.get("pk"))
-            .or_else(|| data.get("post_id"))
-            .and_then(|v| v.as_str())
-            .or_else(|| data.get("pk").and_then(|p| p.as_u64()).map(|p| p.to_string()))
-            .ok_or_else(|| GhostError::ParseError("Missing post ID".into()))?;
+        // Get post ID - handle multiple possible formats
+        let id = if let Some(id_str) = data.get("id").and_then(|v| v.as_str()) {
+            id_str.to_string()
+        } else if let Some(pk_str) = data.get("pk").and_then(|p| p.as_str()) {
+            pk_str.to_string()
+        } else if let Some(post_id) = data.get("post_id").and_then(|v| v.as_str()) {
+            post_id.to_string()
+        } else if let Some(pk_num) = data.get("pk").and_then(|p| p.as_u64()) {
+            pk_num.to_string()
+        } else {
+            return Err(GhostError::ParseError("Missing post ID".into()));
+        };
 
         // Get text content
         let text = data.get("text")
@@ -44,11 +49,11 @@ impl PostParser {
         let metrics = self.parse_metrics(data);
 
         // Parse created_at
-        let created_at = data.get("taken_at")
+        let created_at: i64 = data.get("taken_at")
             .or_else(|| data.get("created_at"))
             .or_else(|| data.get("timestamp"))
             .and_then(|v| v.as_u64())
-            .unwrap_or(0);
+            .unwrap_or(0) as i64;
 
         Ok(GhostPost {
             id,
@@ -310,18 +315,23 @@ impl UserParser {
 
     /// Parses user data into GhostUser
     pub fn parse(&self, data: &serde_json::Value) -> Result<GhostUser, GhostError> {
-        // Get ID
-        let id = data.get("pk")
-            .and_then(|p| p.as_str())
-            .or_else(|| data.get("id").and_then(|i| i.as_str()))
-            .or_else(|| data.get("pk").and_then(|p| p.as_u64()).map(|p| p.to_string()))
-            .ok_or_else(|| GhostError::ParseError("Missing user ID".into()))?;
+        // Get ID - handle multiple possible formats
+        let id = if let Some(pk_str) = data.get("pk").and_then(|p| p.as_str()) {
+            pk_str.to_string()
+        } else if let Some(id_str) = data.get("id").and_then(|i| i.as_str()) {
+            id_str.to_string()
+        } else if let Some(pk_num) = data.get("pk").and_then(|p| p.as_u64()) {
+            pk_num.to_string()
+        } else {
+            return Err(GhostError::ParseError("Missing user ID".into()));
+        };
 
         // Get username
         let username = data.get("username")
             .or_else(|| data.get("handle"))
             .and_then(|v| v.as_str())
-            .ok_or_else(|| GhostError::ParseError("Missing username".into()))?;
+            .ok_or_else(|| GhostError::ParseError("Missing username".into()))?
+            .to_string();
 
         // Get display name
         let display_name = data.get("full_name")
@@ -362,7 +372,7 @@ impl UserParser {
         Ok(GhostUser {
             id,
             platform: Platform::Threads,
-            username,
+            username: username.clone(),
             display_name,
             bio,
             avatar_url,

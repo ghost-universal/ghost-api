@@ -198,6 +198,23 @@ impl GhostMedia {
     }
 }
 
+impl Default for GhostMedia {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            media_type: MediaType::Unknown,
+            url: String::new(),
+            preview_url: None,
+            width: None,
+            height: None,
+            duration_secs: None,
+            alt_text: None,
+            content_type: None,
+            size_bytes: None,
+        }
+    }
+}
+
 /// Type of media content
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

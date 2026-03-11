@@ -476,7 +476,7 @@ impl HealthEngine {
 }
 
 /// Detailed statistics for a worker
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DetailedStats {
     /// Worker ID
     pub worker_id: String,

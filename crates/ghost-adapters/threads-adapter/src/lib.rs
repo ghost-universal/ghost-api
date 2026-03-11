@@ -82,7 +82,7 @@ pub fn parse_threads_user(data: &serde_json::Value) -> Result<GhostUser, GhostEr
 /// Parse Threads timeline from JSON value
 pub fn parse_threads_timeline(data: &serde_json::Value) -> Result<Vec<GhostPost>, GhostError> {
     let adapter = ThreadsAdapter::new();
-    adapter.parse_timeline(data)
+    adapter.parse_timeline(data).map(|result| result.into_posts())
 }
 
 /// Parse Threads search results from JSON value

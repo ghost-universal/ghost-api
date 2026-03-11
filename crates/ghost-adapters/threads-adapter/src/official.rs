@@ -9,7 +9,7 @@
 
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, Utc};
 use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info};
@@ -1338,7 +1338,8 @@ impl ReplyControlType {
 
 impl From<ThreadsMedia> for GhostPost {
     fn from(media: ThreadsMedia) -> Self {
-        let mut post = GhostPost::new(&media.id, Platform::Threads, media.text.unwrap_or_default());
+        let text = media.text.clone().unwrap_or_default();
+        let mut post = GhostPost::new(&media.id, Platform::Threads, text);
 
         post.like_count = Some(media.likes_count);
         post.repost_count = Some(media.reposts_count);
@@ -1364,7 +1365,7 @@ impl From<ThreadsMedia> for GhostPost {
         post.media = extract_media_from_response(&media);
 
         // Store raw metadata
-        post.raw_metadata = Some(serde_json::to_value(&media).ok());
+        post.raw_metadata = serde_json::to_value(&media).ok();
 
         post
     }
@@ -1401,9 +1402,9 @@ fn parse_threads_timestamp(timestamp: &str) -> Result<i64, GhostError> {
             chrono::DateTime::parse_from_str(timestamp, "%Y-%m-%dT%H:%M:%S%z")
         })
         .or_else(|_| {
-            // Try without timezone
+            // Try without timezone - convert to FixedOffset
             chrono::NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%dT%H:%M:%S")
-                .map(|dt| chrono::DateTime::from_naive_utc_and_offset(dt, Utc))
+                .map(|dt| chrono::DateTime::<FixedOffset>::from_naive_utc_and_offset(dt, FixedOffset::east_opt(0).unwrap()))
         });
 
     match dt {

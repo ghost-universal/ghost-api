@@ -131,19 +131,8 @@ pub async fn create_app(config: ServerConfig) -> Result<Router, ServerError> {
         config: config.clone(),
     });
 
-    // Build API routes
-    let api_routes = routes::create_routes(state.clone());
-
-    // Build middleware stack
-    let mut app = Router::new()
-        .merge(api_routes);
-
-    // Add Swagger UI if enabled
-    if config.swagger_enabled {
-        let swagger = utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
-            .url("/api-docs/openapi.json", routes::openapi_spec());
-        app = app.merge(swagger);
-    }
+    // Build API routes (already has state applied)
+    let app = routes::create_routes(state);
 
     // Add CORS if enabled
     let app = if config.cors_enabled {
@@ -163,8 +152,7 @@ pub async fn create_app(config: ServerConfig) -> Result<Router, ServerError> {
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
                 .layer(RequestBodyLimitLayer::new(config.max_body_size))
-        )
-        .with_state(state);
+        );
 
     Ok(app)
 }
@@ -176,19 +164,8 @@ pub fn create_app_with_ghost(ghost: Arc<Ghost>, config: ServerConfig) -> Router 
         config: config.clone(),
     });
 
-    // Build API routes
-    let api_routes = routes::create_routes(state.clone());
-
-    // Build router
-    let mut app = Router::new()
-        .merge(api_routes);
-
-    // Add Swagger UI if enabled
-    if config.swagger_enabled {
-        let swagger = utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
-            .url("/api-docs/openapi.json", routes::openapi_spec());
-        app = app.merge(swagger);
-    }
+    // Build API routes (already has state applied)
+    let app = routes::create_routes(state);
 
     // Add CORS if enabled
     let app = if config.cors_enabled {
@@ -208,5 +185,4 @@ pub fn create_app_with_ghost(ghost: Arc<Ghost>, config: ServerConfig) -> Router 
             .layer(TraceLayer::new_for_http())
             .layer(RequestBodyLimitLayer::new(config.max_body_size))
     )
-    .with_state(state)
 }

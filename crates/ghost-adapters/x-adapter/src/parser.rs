@@ -4,9 +4,8 @@
 
 use ghost_schema::{
     GhostError, GhostPost, GhostUser, GhostMedia, MediaType,
-    Platform, XUserMetadata, XPostMetadata,
-    XTweetData, XUserData, XMediaData, XIncludes, XTweetMetrics,
-    Coordinates, Place, UserMention, UrlEntity, HashtagEntity, CashtagEntity,
+    Platform, XUserMetadata, XPostMetadata, XTweetMetrics,
+    HashtagEntity, UserMention, UrlEntity,
 };
 
 /// Parses a tweet/post from X
@@ -20,14 +19,16 @@ impl PostParser {
 
     /// Parses tweet data into GhostPost
     pub fn parse(&self, data: &serde_json::Value) -> Result<GhostPost, GhostError> {
-        // Handle legacy tweet format
-        let id = data.get("id_str")
-            .or_else(|| data.get("id"))
-            .and_then(|v| v.as_str())
-            .or_else(|| data.get("rest_id"))
-            .and_then(|v| v.as_u64())
-            .map(|v| v.to_string())
-            .ok_or_else(|| GhostError::ParseError("Missing tweet ID".into()))?;
+        // Handle legacy tweet format - extract ID from multiple possible fields
+        let id = if let Some(id_str) = data.get("id_str").and_then(|v| v.as_str()) {
+            id_str.to_string()
+        } else if let Some(id) = data.get("id").and_then(|v| v.as_str()) {
+            id.to_string()
+        } else if let Some(rest_id) = data.get("rest_id").and_then(|v| v.as_u64()) {
+            rest_id.to_string()
+        } else {
+            return Err(GhostError::ParseError("Missing tweet ID".into()));
+        };
 
         // Get text content
         let text = data.get("text")
@@ -324,17 +325,23 @@ impl UserParser {
 
     /// Parses user data into GhostUser
     pub fn parse(&self, data: &serde_json::Value) -> Result<GhostUser, GhostError> {
-        // Get ID
-        let id = data.get("id_str")
-            .or_else(|| data.get("rest_id").and_then(|r| r.as_u64()).map(|r| r.to_string()))
-            .or_else(|| data.get("id").and_then(|i| i.as_str()))
-            .ok_or_else(|| GhostError::ParseError("Missing user ID".into()))?;
+        // Get ID - handle multiple possible formats
+        let id = if let Some(id_str) = data.get("id_str").and_then(|v| v.as_str()) {
+            id_str.to_string()
+        } else if let Some(rest_id) = data.get("rest_id").and_then(|r| r.as_u64()) {
+            rest_id.to_string()
+        } else if let Some(id) = data.get("id").and_then(|i| i.as_str()) {
+            id.to_string()
+        } else {
+            return Err(GhostError::ParseError("Missing user ID".into()));
+        };
 
         // Get username
         let username = data.get("screen_name")
             .or_else(|| data.get("username"))
             .and_then(|v| v.as_str())
-            .ok_or_else(|| GhostError::ParseError("Missing username".into()))?;
+            .ok_or_else(|| GhostError::ParseError("Missing username".into()))?
+            .to_string();
 
         // Get legacy data if available
         let legacy = data.get("legacy");

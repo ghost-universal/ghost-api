@@ -9,7 +9,6 @@ use ghost_schema::{
 };
 
 use crate::parser::{PostParser, UserParser};
-use crate::graphql::GraphQLQueries;
 
 /// X (Twitter) platform adapter
 pub struct XAdapter {
@@ -112,7 +111,9 @@ impl XAdapter {
 
         // Check for standard API v2 format
         if let Ok(response) = serde_json::from_value::<XTweetResponse>(data.clone()) {
-            return self.parse_tweet_response(response, includes.cloned());
+            let includes: Option<XIncludes> = includes
+                .and_then(|v| serde_json::from_value(v.clone()).ok());
+            return self.parse_tweet_response(response, includes);
         }
 
         Err(GhostError::AdapterError("Could not parse data response".into()))
@@ -153,7 +154,7 @@ impl XAdapter {
         let author = if let Some(includes) = includes {
             if let Some(ref users) = includes.users {
                 users.iter()
-                    .find(|u| u.id == data.author_id.as_ref().unwrap_or(&String::new()))
+                    .find(|u| &u.id == data.author_id.as_ref().unwrap_or(&String::new()))
                     .map(|u| self.parse_user_data(u))
                     .transpose()?
             } else {
